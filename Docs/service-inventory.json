@@ -1,0 +1,1733 @@
+
+{
+  "catalogName": "homelab-platform-service-guide",
+  "version": "1.0.0",
+  "purpose": "Service catalog and knowledge dependency matrix for a Kubernetes-based homelab platform.",
+  "domains": [
+    {
+      "name": "core-infrastructure",
+      "description": "Foundational services required for platform stability, bootstrapping, and baseline operations.",
+      "capabilities": [
+        {
+          "name": "time-synchronization",
+          "description": "Maintains accurate system time across infrastructure.",
+          "services": [
+            {
+              "name": "ntp",
+              "description": "Provides time synchronization for VMs, Kubernetes nodes, and infrastructure services.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "infra-core",
+                "namespace": null,
+                "storage": [],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["network"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Network Time Protocol",
+                  "Clock drift",
+                  "System time synchronization",
+                  "UTC vs local time"
+                ],
+                "operations": [
+                  "NTP server configuration",
+                  "Time sync verification",
+                  "Chrony or systemd-timesyncd troubleshooting"
+                ],
+                "troubleshooting": [
+                  "Clock skew",
+                  "Certificate validation failures caused by incorrect time",
+                  "Authentication failures caused by time drift"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "bootstrap-automation",
+          "description": "Provides scripts and automation for initializing infrastructure.",
+          "services": [
+            {
+              "name": "utility-scripts",
+              "description": "Reusable scripts for provisioning, configuration, and recovery tasks.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "infra-core",
+                "namespace": null,
+                "storage": [],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["network", "storage"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Bash scripting",
+                  "Idempotency",
+                  "Environment variables",
+                  "Configuration files"
+                ],
+                "operations": [
+                  "Provisioning scripts",
+                  "Health check scripts",
+                  "Backup scripts",
+                  "Cron jobs"
+                ],
+                "troubleshooting": [
+                  "Shell permissions",
+                  "Path issues",
+                  "Failed automation runs",
+                  "Script logging"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "network",
+      "description": "Provides ingress, DNS, routing, certificates, and secure remote access.",
+      "capabilities": [
+        {
+          "name": "reverse-proxy",
+          "description": "Routes HTTP/S traffic to internal services.",
+          "services": [
+            {
+              "name": "caddy",
+              "description": "Reverse proxy and TLS termination layer for internal and external services.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "network-edge",
+                "namespace": null,
+                "storage": [],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["network", "security"],
+                "services": ["adguard-home"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "HTTP",
+                  "HTTPS",
+                  "Reverse proxy",
+                  "TLS termination",
+                  "DNS records"
+                ],
+                "architecture": [
+                  "Virtual hosts",
+                  "Path-based routing",
+                  "Subdomain routing",
+                  "Upstream services",
+                  "Certificate automation"
+                ],
+                "operations": [
+                  "Caddyfile syntax",
+                  "Proxy headers",
+                  "Access logs",
+                  "Automatic HTTPS"
+                ],
+                "troubleshooting": [
+                  "502 Bad Gateway",
+                  "Certificate issuance failures",
+                  "DNS resolution failures",
+                  "Incorrect upstream ports"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "dns-filtering",
+          "description": "Provides local DNS resolution and filtering.",
+          "services": [
+            {
+              "name": "adguard-home",
+              "description": "DNS resolver, ad blocker, and local DNS manager.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "network-edge",
+                "namespace": null,
+                "storage": [],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["network"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "DNS",
+                  "A records",
+                  "CNAME records",
+                  "Forwarders",
+                  "Recursive DNS",
+                  "Authoritative DNS"
+                ],
+                "architecture": [
+                  "Split-horizon DNS",
+                  "Conditional forwarding",
+                  "Local DNS zones",
+                  "DNS filtering"
+                ],
+                "operations": [
+                  "Upstream DNS configuration",
+                  "Static DNS rewrites",
+                  "Client identification",
+                  "Blocklists"
+                ],
+                "troubleshooting": [
+                  "NXDOMAIN errors",
+                  "Wrong DNS server assignment",
+                  "DNS cache issues",
+                  "Local hostname resolution failures"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "remote-access",
+          "description": "Provides secure access to the lab from remote devices.",
+          "services": [
+            {
+              "name": "tailscale",
+              "description": "WireGuard-based mesh VPN for remote access and private networking.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "network-edge",
+                "namespace": null,
+                "storage": [],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["identity", "network"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "WireGuard",
+                  "VPN tunneling",
+                  "Mesh networking",
+                  "Device identity",
+                  "Zero-trust networking"
+                ],
+                "architecture": [
+                  "Subnet routers",
+                  "Exit nodes",
+                  "ACL policies",
+                  "MagicDNS"
+                ],
+                "operations": [
+                  "Device enrollment",
+                  "Route advertisement",
+                  "Access control lists",
+                  "Key expiry"
+                ],
+                "troubleshooting": [
+                  "Subnet route not working",
+                  "ACL blocking access",
+                  "DNS over VPN failures",
+                  "Device authentication issues"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "storage",
+      "description": "Provides persistent storage, object storage, model storage, and backup targets.",
+      "capabilities": [
+        {
+          "name": "persistent-volumes",
+          "description": "Provides durable storage for Kubernetes workloads.",
+          "services": [
+            {
+              "name": "nfs",
+              "description": "Network file storage exported to Kubernetes and other systems.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "storage-services",
+                "namespace": null,
+                "storage": ["lab-storage/k8s-pv-storage"],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["network", "storage"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "NFS exports",
+                  "Mount points",
+                  "UID and GID permissions",
+                  "Linux file permissions"
+                ],
+                "kubernetes": [
+                  "PersistentVolume",
+                  "PersistentVolumeClaim",
+                  "StorageClass",
+                  "ReadWriteOnce",
+                  "ReadWriteMany"
+                ],
+                "operations": [
+                  "Export configuration",
+                  "Mount testing",
+                  "Filesystem permissions",
+                  "Storage quotas"
+                ],
+                "troubleshooting": [
+                  "Permission denied",
+                  "Stale file handle",
+                  "PVC stuck pending",
+                  "Mount timeout"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "object-storage",
+          "description": "Provides S3-compatible storage for backups, artifacts, and application data.",
+          "services": [
+            {
+              "name": "minio",
+              "description": "Self-hosted S3-compatible object storage.",
+              "infrastructure": {
+                "platform": "vm",
+                "location": "storage-services",
+                "namespace": null,
+                "storage": ["lab-storage/backup-storage"],
+                "nodeGroup": null
+              },
+              "dependencies": {
+                "domains": ["network", "identity", "storage"],
+                "services": ["caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Object storage",
+                  "Buckets",
+                  "S3 API",
+                  "Access keys",
+                  "Secret keys"
+                ],
+                "architecture": [
+                  "Bucket policies",
+                  "Lifecycle policies",
+                  "Object versioning",
+                  "Replication"
+                ],
+                "operations": [
+                  "Bucket creation",
+                  "User access policies",
+                  "Backup target configuration",
+                  "TLS endpoint configuration"
+                ],
+                "troubleshooting": [
+                  "Access denied",
+                  "Invalid S3 credentials",
+                  "Bucket policy conflicts",
+                  "Object upload failures"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "identity",
+      "description": "Provides authentication, authorization, SSO, and credential management.",
+      "capabilities": [
+        {
+          "name": "authentication",
+          "description": "Centralizes user and application authentication.",
+          "services": [
+            {
+              "name": "authentik",
+              "description": "Identity provider for SSO, federation, and application authentication.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "auth",
+                "storage": ["postgresql", "persistent-volume"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["network", "data", "security"],
+                "services": ["postgresql", "redis", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Authentication vs authorization",
+                  "Identity provider",
+                  "Service provider",
+                  "User directory",
+                  "Federated identity"
+                ],
+                "protocols": [
+                  "OAuth 2.0 Authorization Code Flow",
+                  "OAuth 2.0 Client Credentials Flow",
+                  "OpenID Connect",
+                  "SAML 2.0",
+                  "LDAP"
+                ],
+                "security": [
+                  "Multi-factor authentication",
+                  "JWT validation",
+                  "Refresh tokens",
+                  "Session lifetime",
+                  "Claims mapping",
+                  "Role-based access control"
+                ],
+                "operations": [
+                  "Application integration",
+                  "Provider configuration",
+                  "Group mapping",
+                  "User lifecycle management",
+                  "Redirect URI configuration"
+                ],
+                "troubleshooting": [
+                  "OIDC redirect URI mismatch",
+                  "SAML assertion failure",
+                  "Invalid client secret",
+                  "Token audience mismatch",
+                  "LDAP bind failure"
+                ]
+              }
+            },
+            {
+              "name": "vaultwarden",
+              "description": "Self-hosted password manager compatible with Bitwarden clients.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "auth",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["network", "storage"],
+                "services": ["caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Password vaulting",
+                  "End-to-end encryption",
+                  "Master password",
+                  "Password sharing",
+                  "Password generators"
+                ],
+                "security": [
+                  "MFA",
+                  "Emergency access",
+                  "Encryption keys",
+                  "Backup encryption",
+                  "Credential rotation"
+                ],
+                "operations": [
+                  "User management",
+                  "SMTP configuration",
+                  "Backup and restore",
+                  "Admin token management"
+                ],
+                "troubleshooting": [
+                  "SMTP failures",
+                  "Login failures",
+                  "Database corruption",
+                  "Broken browser extension sync"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "data",
+      "description": "Provides databases, caching, search, and structured data services.",
+      "capabilities": [
+        {
+          "name": "relational-database",
+          "description": "Provides structured data storage.",
+          "services": [
+            {
+              "name": "postgresql",
+              "description": "Primary relational database for applications and platform services.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "data",
+                "storage": ["lab-storage/k8s-pv-storage"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["storage"],
+                "services": ["nfs"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Tables",
+                  "Rows",
+                  "Columns",
+                  "Primary keys",
+                  "Foreign keys",
+                  "Schemas",
+                  "Indexes"
+                ],
+                "querying": [
+                  "SELECT statements",
+                  "JOIN operations",
+                  "GROUP BY",
+                  "WHERE filtering",
+                  "Query execution plans"
+                ],
+                "architecture": [
+                  "ACID transactions",
+                  "Isolation levels",
+                  "Write-ahead logging",
+                  "Connection pooling",
+                  "Replication"
+                ],
+                "operations": [
+                  "Database backups",
+                  "Point-in-time recovery",
+                  "Vacuum",
+                  "User roles",
+                  "Database migrations"
+                ],
+                "troubleshooting": [
+                  "Connection exhaustion",
+                  "Slow queries",
+                  "Lock contention",
+                  "Disk full",
+                  "Failed migrations"
+                ]
+              }
+            },
+            {
+              "name": "pgvector",
+              "description": "PostgreSQL extension for vector search and AI embedding storage.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "data",
+                "storage": ["postgresql"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["data", "ai"],
+                "services": ["postgresql"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Embeddings",
+                  "Vectors",
+                  "Similarity search",
+                  "Cosine similarity",
+                  "Nearest neighbor search"
+                ],
+                "architecture": [
+                  "Vector indexes",
+                  "Retrieval augmented generation",
+                  "Embedding dimensions",
+                  "Hybrid search"
+                ],
+                "operations": [
+                  "Creating vector columns",
+                  "Index tuning",
+                  "Embedding ingestion",
+                  "Query optimization"
+                ],
+                "troubleshooting": [
+                  "Slow vector queries",
+                  "Mismatched embedding dimensions",
+                  "Poor retrieval relevance",
+                  "Index bloat"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cache",
+          "description": "Provides high-speed temporary data storage.",
+          "services": [
+            {
+              "name": "redis",
+              "description": "In-memory cache, session store, queue backend, and pub/sub system.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "data",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["storage"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Key-value storage",
+                  "TTL",
+                  "Cache eviction",
+                  "Pub/sub",
+                  "In-memory persistence"
+                ],
+                "architecture": [
+                  "Session storage",
+                  "Queue backend",
+                  "Cache-aside pattern",
+                  "Write-through cache"
+                ],
+                "operations": [
+                  "Memory limits",
+                  "Persistence configuration",
+                  "Key inspection",
+                  "Eviction policy tuning"
+                ],
+                "troubleshooting": [
+                  "Memory exhaustion",
+                  "Cache stampede",
+                  "Connection refused",
+                  "Unexpected key expiration"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Provides indexing and full-text search.",
+          "services": [
+            {
+              "name": "elasticsearch",
+              "description": "Distributed search and indexing engine.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "data",
+                "storage": ["lab-storage/k8s-pv-storage"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["storage"],
+                "services": ["nfs"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Documents",
+                  "Indexes",
+                  "Mappings",
+                  "Analyzers",
+                  "Full-text search"
+                ],
+                "architecture": [
+                  "Shards",
+                  "Replicas",
+                  "Cluster health",
+                  "Inverted indexes"
+                ],
+                "operations": [
+                  "Index lifecycle management",
+                  "Query DSL",
+                  "Snapshot backups",
+                  "Heap sizing"
+                ],
+                "troubleshooting": [
+                  "Yellow cluster health",
+                  "Red cluster health",
+                  "Shard allocation failures",
+                  "High JVM heap usage"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ai",
+      "description": "Provides local AI inference, model routing, AI interfaces, vector storage, and LLM observability.",
+      "capabilities": [
+        {
+          "name": "model-inference",
+          "description": "Runs local AI models.",
+          "services": [
+            {
+              "name": "ollama",
+              "description": "Local model runtime for serving LLMs.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-03",
+                "namespace": "ai",
+                "storage": ["lab-storage/ai-models"],
+                "nodeGroup": "ai-platform"
+              },
+              "dependencies": {
+                "domains": ["storage", "network"],
+                "services": ["nfs", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Large language models",
+                  "Tokens",
+                  "Context windows",
+                  "Prompting",
+                  "Embeddings"
+                ],
+                "architecture": [
+                  "Model serving",
+                  "Quantization",
+                  "CPU inference",
+                  "GPU inference",
+                  "Model storage"
+                ],
+                "operations": [
+                  "Model pulling",
+                  "Model loading",
+                  "Memory allocation",
+                  "Concurrency limits",
+                  "API endpoint testing"
+                ],
+                "troubleshooting": [
+                  "Out-of-memory errors",
+                  "Slow token generation",
+                  "Model load failures",
+                  "GPU not detected",
+                  "Context window overflow"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "model-gateway",
+          "description": "Routes model requests across providers and local models.",
+          "services": [
+            {
+              "name": "litellm",
+              "description": "OpenAI-compatible gateway for routing, tracking, and managing AI model access.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-03",
+                "namespace": "ai",
+                "storage": [],
+                "nodeGroup": "ai-platform"
+              },
+              "dependencies": {
+                "domains": ["ai", "identity", "network"],
+                "services": ["ollama", "postgresql", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "OpenAI-compatible APIs",
+                  "API gateways",
+                  "Model providers",
+                  "API keys"
+                ],
+                "architecture": [
+                  "Model routing",
+                  "Provider abstraction",
+                  "Fallback routing",
+                  "Rate limiting",
+                  "Request logging"
+                ],
+                "operations": [
+                  "Provider configuration",
+                  "Key management",
+                  "Usage tracking",
+                  "Cost tracking"
+                ],
+                "troubleshooting": [
+                  "Invalid API key",
+                  "Provider timeout",
+                  "Model not found",
+                  "Rate limit errors"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "chat-interface",
+          "description": "Provides a user interface for AI model interaction.",
+          "services": [
+            {
+              "name": "open-webui",
+              "description": "Web interface for interacting with local and remote AI models.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-03",
+                "namespace": "ai",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "ai-platform"
+              },
+              "dependencies": {
+                "domains": ["ai", "identity", "network"],
+                "services": ["ollama", "litellm", "caddy", "authentik"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Chat interfaces",
+                  "Prompt history",
+                  "Model selection",
+                  "User accounts"
+                ],
+                "architecture": [
+                  "RAG pipelines",
+                  "Document ingestion",
+                  "Model backend configuration",
+                  "User role management"
+                ],
+                "operations": [
+                  "Connecting model endpoints",
+                  "Managing users",
+                  "Configuring RAG",
+                  "Importing documents"
+                ],
+                "troubleshooting": [
+                  "Backend unavailable",
+                  "Model list not loading",
+                  "RAG document parsing failure",
+                  "Authentication redirect failure"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "llm-observability",
+          "description": "Tracks AI usage, latency, prompts, and responses.",
+          "services": [
+            {
+              "name": "langfuse",
+              "description": "Observability platform for LLM applications.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-03",
+                "namespace": "ai",
+                "storage": ["postgresql"],
+                "nodeGroup": "ai-platform"
+              },
+              "dependencies": {
+                "domains": ["data", "network", "ai"],
+                "services": ["postgresql", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "LLM traces",
+                  "Prompt logging",
+                  "Latency",
+                  "Token usage",
+                  "Cost tracking"
+                ],
+                "architecture": [
+                  "Trace IDs",
+                  "Datasets",
+                  "Evaluations",
+                  "Prompt versioning",
+                  "Observability pipelines"
+                ],
+                "operations": [
+                  "SDK integration",
+                  "API key management",
+                  "Dashboard review",
+                  "Prompt evaluation"
+                ],
+                "troubleshooting": [
+                  "Missing traces",
+                  "Incorrect token counts",
+                  "Failed SDK calls",
+                  "Database connection failures"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "automation",
+      "description": "Provides workflow automation, source control, deployment tooling, and development environments.",
+      "capabilities": [
+        {
+          "name": "workflow-automation",
+          "description": "Automates operational and business workflows.",
+          "services": [
+            {
+              "name": "n8n",
+              "description": "Workflow automation platform for API integrations and scheduled jobs.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "automation",
+                "storage": ["postgresql", "persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["data", "network", "identity"],
+                "services": ["postgresql", "redis", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Workflows",
+                  "Nodes",
+                  "Triggers",
+                  "Webhooks",
+                  "API integrations"
+                ],
+                "architecture": [
+                  "Queue mode",
+                  "Workers",
+                  "Credential storage",
+                  "Event-driven automation"
+                ],
+                "operations": [
+                  "Webhook configuration",
+                  "Credential management",
+                  "Workflow exports",
+                  "Scheduled executions"
+                ],
+                "troubleshooting": [
+                  "Webhook URL mismatch",
+                  "Credential failure",
+                  "JSON parsing errors",
+                  "Worker queue failures"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "source-control",
+          "description": "Provides Git repository hosting.",
+          "services": [
+            {
+              "name": "forgejo",
+              "description": "Self-hosted Git service for repositories, issues, and pull requests.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "automation",
+                "storage": ["postgresql", "persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["data", "network", "identity"],
+                "services": ["postgresql", "caddy", "authentik"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Git",
+                  "Repositories",
+                  "Branches",
+                  "Commits",
+                  "Pull requests"
+                ],
+                "architecture": [
+                  "SSH keys",
+                  "Git over HTTPS",
+                  "Webhooks",
+                  "Repository permissions",
+                  "Branch protection"
+                ],
+                "operations": [
+                  "User management",
+                  "Repository creation",
+                  "Backup and restore",
+                  "Webhook integration"
+                ],
+                "troubleshooting": [
+                  "SSH authentication failure",
+                  "Git push rejected",
+                  "Webhook delivery failure",
+                  "Repository permission issues"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "observability",
+      "description": "Provides metrics, dashboards, monitoring, and operational visibility.",
+      "capabilities": [
+        {
+          "name": "metrics",
+          "description": "Collects and stores infrastructure and application metrics.",
+          "services": [
+            {
+              "name": "prometheus",
+              "description": "Time-series metrics database and monitoring system.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "observability",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["network", "storage"],
+                "services": ["node-exporter", "cadvisor"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Metrics",
+                  "Time-series data",
+                  "Counters",
+                  "Gauges",
+                  "Histograms",
+                  "Summaries"
+                ],
+                "architecture": [
+                  "Pull-based monitoring",
+                  "Scrape targets",
+                  "Service discovery",
+                  "Exporters",
+                  "Retention policies"
+                ],
+                "operations": [
+                  "PromQL",
+                  "Recording rules",
+                  "Alert rules",
+                  "Target discovery"
+                ],
+                "troubleshooting": [
+                  "Failed scrapes",
+                  "High cardinality",
+                  "Missing metrics",
+                  "Storage retention issues"
+                ]
+              }
+            },
+            {
+              "name": "grafana",
+              "description": "Dashboard and visualization platform for metrics, logs, and traces.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "observability",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["observability", "logging", "identity"],
+                "services": ["prometheus", "loki", "tempo", "authentik"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Dashboards",
+                  "Panels",
+                  "Data sources",
+                  "Queries",
+                  "Variables"
+                ],
+                "architecture": [
+                  "Dashboard provisioning",
+                  "Folder organization",
+                  "Alerting",
+                  "SLO dashboards"
+                ],
+                "operations": [
+                  "Prometheus data source setup",
+                  "Loki data source setup",
+                  "Dashboard import/export",
+                  "Alert contact points"
+                ],
+                "troubleshooting": [
+                  "No data in dashboard",
+                  "Broken data source",
+                  "Query timeout",
+                  "Incorrect time range"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "gitops",
+      "description": "Provides declarative deployment and desired-state reconciliation from Git.",
+      "capabilities": [
+        {
+          "name": "deployment-management",
+          "description": "Manages Kubernetes deployments from Git repositories.",
+          "services": [
+            {
+              "name": "argocd",
+              "description": "GitOps controller for Kubernetes application deployment.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-control-01",
+                "namespace": "gitops",
+                "storage": [],
+                "nodeGroup": "control-plane"
+              },
+              "dependencies": {
+                "domains": ["automation", "identity", "network"],
+                "services": ["forgejo", "authentik", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "GitOps",
+                  "Desired state",
+                  "Declarative configuration",
+                  "Git as source of truth"
+                ],
+                "kubernetes": [
+                  "Custom Resource Definitions",
+                  "Deployments",
+                  "Services",
+                  "Ingress",
+                  "Namespaces",
+                  "RBAC"
+                ],
+                "packaging": [
+                  "Helm charts",
+                  "Kustomize overlays",
+                  "Raw manifests",
+                  "Values files"
+                ],
+                "operations": [
+                  "Application sync",
+                  "Drift detection",
+                  "Rollback",
+                  "Sync waves",
+                  "App of apps pattern"
+                ],
+                "troubleshooting": [
+                  "OutOfSync applications",
+                  "Helm rendering failures",
+                  "Permission denied by RBAC",
+                  "Failed health checks"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "security",
+      "description": "Provides secrets management, vulnerability scanning, runtime detection, and policy enforcement.",
+      "capabilities": [
+        {
+          "name": "secrets-management",
+          "description": "Manages application and infrastructure secrets.",
+          "services": [
+            {
+              "name": "vault",
+              "description": "Centralized secrets management and encryption service.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "security",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["identity", "storage", "network"],
+                "services": ["authentik", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Secrets management",
+                  "Encryption at rest",
+                  "Encryption in transit",
+                  "Tokens",
+                  "Policies"
+                ],
+                "architecture": [
+                  "Secret engines",
+                  "Leases",
+                  "Dynamic secrets",
+                  "Unseal process",
+                  "Key management"
+                ],
+                "operations": [
+                  "Policy creation",
+                  "Secret rotation",
+                  "Backup and restore",
+                  "Kubernetes auth method"
+                ],
+                "troubleshooting": [
+                  "Vault sealed",
+                  "Token expired",
+                  "Permission denied by policy",
+                  "Kubernetes auth failure"
+                ]
+              }
+            },
+            {
+              "name": "external-secrets-operator",
+              "description": "Synchronizes external secrets into Kubernetes Secrets.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-control-01",
+                "namespace": "security",
+                "storage": [],
+                "nodeGroup": "control-plane"
+              },
+              "dependencies": {
+                "domains": ["security", "gitops"],
+                "services": ["vault", "argocd"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Kubernetes Secrets",
+                  "Secret synchronization",
+                  "External secret stores",
+                  "Secret references"
+                ],
+                "architecture": [
+                  "SecretStore",
+                  "ClusterSecretStore",
+                  "ExternalSecret",
+                  "Refresh intervals"
+                ],
+                "operations": [
+                  "Secret mapping",
+                  "RBAC configuration",
+                  "Provider authentication",
+                  "Secret refresh validation"
+                ],
+                "troubleshooting": [
+                  "Secret not syncing",
+                  "Provider authentication failure",
+                  "Missing RBAC permissions",
+                  "Invalid secret path"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "vulnerability-scanning",
+          "description": "Scans workloads and images for known vulnerabilities.",
+          "services": [
+            {
+              "name": "trivy",
+              "description": "Security scanner for containers, filesystems, IaC, and Kubernetes manifests.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "security",
+                "storage": [],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["registry", "gitops"],
+                "services": ["harbor", "argocd"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "CVE",
+                  "Container image layers",
+                  "Software Bill of Materials",
+                  "Vulnerability databases"
+                ],
+                "architecture": [
+                  "Image scanning",
+                  "Filesystem scanning",
+                  "IaC scanning",
+                  "Kubernetes manifest scanning"
+                ],
+                "operations": [
+                  "Scan policies",
+                  "Severity thresholds",
+                  "CI/CD scanning",
+                  "Report review"
+                ],
+                "troubleshooting": [
+                  "False positives",
+                  "Outdated vulnerability database",
+                  "Scan timeout",
+                  "Missing image permissions"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "logging",
+      "description": "Provides centralized log collection, querying, and distributed tracing.",
+      "capabilities": [
+        {
+          "name": "log-aggregation",
+          "description": "Collects logs from applications and infrastructure.",
+          "services": [
+            {
+              "name": "loki",
+              "description": "Log aggregation system optimized for Kubernetes and Grafana.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "logging",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["observability", "storage"],
+                "services": ["grafana"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Logs",
+                  "Structured logging",
+                  "Labels",
+                  "Log streams",
+                  "Retention"
+                ],
+                "architecture": [
+                  "Log aggregation",
+                  "Promtail agents",
+                  "LogQL",
+                  "Indexing by labels"
+                ],
+                "operations": [
+                  "Log queries",
+                  "Retention policy",
+                  "Log source configuration",
+                  "Grafana integration"
+                ],
+                "troubleshooting": [
+                  "Missing logs",
+                  "Label cardinality issues",
+                  "Query timeout",
+                  "Retention misconfiguration"
+                ]
+              }
+            },
+            {
+              "name": "tempo",
+              "description": "Distributed tracing backend for request tracing.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "logging",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["observability"],
+                "services": ["grafana", "opentelemetry"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Distributed tracing",
+                  "Trace ID",
+                  "Span",
+                  "Parent-child spans",
+                  "Latency analysis"
+                ],
+                "architecture": [
+                  "OpenTelemetry",
+                  "Trace ingestion",
+                  "Service dependency mapping",
+                  "Sampling"
+                ],
+                "operations": [
+                  "Trace query",
+                  "Grafana trace visualization",
+                  "Application instrumentation",
+                  "Sampling configuration"
+                ],
+                "troubleshooting": [
+                  "Missing traces",
+                  "Broken trace propagation",
+                  "High trace volume",
+                  "Instrumentation errors"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "platform-engineering",
+      "description": "Provides developer self-service, service catalog, software templates, and platform documentation.",
+      "capabilities": [
+        {
+          "name": "developer-portal",
+          "description": "Central interface for developers and platform users.",
+          "services": [
+            {
+              "name": "backstage",
+              "description": "Internal developer portal for service catalog, templates, documentation, and ownership.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "platform",
+                "storage": ["postgresql"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["identity", "automation", "gitops", "observability"],
+                "services": ["authentik", "forgejo", "argocd", "grafana", "postgresql"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Internal developer platform",
+                  "Developer self-service",
+                  "Service ownership",
+                  "Platform as a product"
+                ],
+                "catalog": [
+                  "Backstage catalog-info.yaml",
+                  "Component kind",
+                  "System kind",
+                  "Resource kind",
+                  "Owner field",
+                  "Dependency relationships"
+                ],
+                "templates": [
+                  "Software scaffolder",
+                  "Template parameters",
+                  "Repository bootstrapping",
+                  "CI/CD pipeline generation",
+                  "Standardized service creation"
+                ],
+                "documentation": [
+                  "TechDocs",
+                  "Documentation as code",
+                  "MkDocs",
+                  "Service runbooks",
+                  "Architecture decision records"
+                ],
+                "troubleshooting": [
+                  "Catalog entity not loading",
+                  "Git integration failure",
+                  "Template execution failure",
+                  "Auth provider misconfiguration"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "registry",
+      "description": "Stores and secures container images and software artifacts.",
+      "capabilities": [
+        {
+          "name": "container-registry",
+          "description": "Hosts internal container images.",
+          "services": [
+            {
+              "name": "harbor",
+              "description": "Private container registry with image scanning and access control.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "registry",
+                "storage": ["persistent-volume", "minio"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["storage", "identity", "security"],
+                "services": ["minio", "authentik", "trivy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Container images",
+                  "Image tags",
+                  "Docker registry API",
+                  "Image layers",
+                  "Artifact storage"
+                ],
+                "architecture": [
+                  "Registry projects",
+                  "Image replication",
+                  "Retention policies",
+                  "Robot accounts",
+                  "OCI artifacts"
+                ],
+                "security": [
+                  "Image vulnerability scanning",
+                  "Image signing",
+                  "Registry authentication",
+                  "RBAC"
+                ],
+                "operations": [
+                  "Image push",
+                  "Image pull",
+                  "Garbage collection",
+                  "Storage cleanup"
+                ],
+                "troubleshooting": [
+                  "Image pull backoff",
+                  "Unauthorized image pull",
+                  "Expired registry credentials",
+                  "Storage full"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "backup-recovery",
+      "description": "Provides backup, restore, and disaster recovery workflows.",
+      "capabilities": [
+        {
+          "name": "kubernetes-backups",
+          "description": "Protects Kubernetes workloads and cluster resources.",
+          "services": [
+            {
+              "name": "velero",
+              "description": "Backup and restore tool for Kubernetes clusters and persistent volumes.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-control-01",
+                "namespace": "backup",
+                "storage": ["minio", "lab-storage/backup-storage"],
+                "nodeGroup": "control-plane"
+              },
+              "dependencies": {
+                "domains": ["storage", "network"],
+                "services": ["minio", "nfs"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Backup",
+                  "Restore",
+                  "Disaster recovery",
+                  "Recovery point objective",
+                  "Recovery time objective"
+                ],
+                "kubernetes": [
+                  "Kubernetes resource backups",
+                  "Persistent volume snapshots",
+                  "Namespace restore",
+                  "Cluster migration"
+                ],
+                "operations": [
+                  "Scheduled backups",
+                  "Restore testing",
+                  "Backup retention",
+                  "Object storage backend configuration"
+                ],
+                "troubleshooting": [
+                  "Failed backup jobs",
+                  "Missing persistent volume data",
+                  "Restore conflicts",
+                  "Object storage access failure"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "messaging",
+      "description": "Provides asynchronous messaging and event-driven communication.",
+      "capabilities": [
+        {
+          "name": "message-queue",
+          "description": "Provides reliable asynchronous message delivery.",
+          "services": [
+            {
+              "name": "rabbitmq",
+              "description": "Message broker for queues, routing, and background processing.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "messaging",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["storage", "network"],
+                "services": ["nfs", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Message queues",
+                  "Producers",
+                  "Consumers",
+                  "Acknowledgements",
+                  "Durable queues"
+                ],
+                "architecture": [
+                  "AMQP",
+                  "Exchanges",
+                  "Routing keys",
+                  "Dead-letter queues",
+                  "Publish-subscribe"
+                ],
+                "operations": [
+                  "Queue monitoring",
+                  "Consumer scaling",
+                  "Message retention",
+                  "Management UI"
+                ],
+                "troubleshooting": [
+                  "Unacked messages",
+                  "Queue buildup",
+                  "Connection refused",
+                  "Consumer crash loops"
+                ]
+              }
+            },
+            {
+              "name": "nats",
+              "description": "Lightweight messaging and event streaming platform.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-02",
+                "namespace": "messaging",
+                "storage": ["persistent-volume"],
+                "nodeGroup": "data-platform"
+              },
+              "dependencies": {
+                "domains": ["network", "storage"],
+                "services": []
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Publish-subscribe messaging",
+                  "Subjects",
+                  "Subscribers",
+                  "Event streaming"
+                ],
+                "architecture": [
+                  "JetStream",
+                  "Message retention",
+                  "Consumers",
+                  "Streams",
+                  "Service discovery"
+                ],
+                "operations": [
+                  "Stream creation",
+                  "Consumer configuration",
+                  "Message replay",
+                  "Cluster monitoring"
+                ],
+                "troubleshooting": [
+                  "Dropped messages",
+                  "Consumer lag",
+                  "Subject mismatch",
+                  "JetStream storage issues"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "applications",
+      "description": "Hosts user-facing applications, internal portals, documentation, and collaboration services.",
+      "capabilities": [
+        {
+          "name": "collaboration",
+          "description": "Provides team communication.",
+          "services": [
+            {
+              "name": "mattermost",
+              "description": "Self-hosted team chat and collaboration platform.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "apps",
+                "storage": ["postgresql", "persistent-volume"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["data", "identity", "network"],
+                "services": ["postgresql", "authentik", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Team chat",
+                  "Channels",
+                  "Users",
+                  "Webhooks",
+                  "Notifications"
+                ],
+                "operations": [
+                  "SMTP setup",
+                  "User management",
+                  "File storage",
+                  "Plugin management"
+                ],
+                "troubleshooting": [
+                  "Database connection failure",
+                  "Login failures",
+                  "Notification failures",
+                  "File upload issues"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "documentation",
+          "description": "Provides knowledge management and documentation.",
+          "services": [
+            {
+              "name": "outline",
+              "description": "Internal documentation and knowledge base platform.",
+              "infrastructure": {
+                "platform": "kubernetes",
+                "location": "k8s-worker-01",
+                "namespace": "apps",
+                "storage": ["postgresql", "s3-compatible-object-storage"],
+                "nodeGroup": "general-apps"
+              },
+              "dependencies": {
+                "domains": ["data", "identity", "storage", "network"],
+                "services": ["postgresql", "redis", "authentik", "minio", "caddy"]
+              },
+              "knowledge": {
+                "fundamentals": [
+                  "Knowledge base",
+                  "Documents",
+                  "Collections",
+                  "Permissions"
+                ],
+                "architecture": [
+                  "OIDC authentication",
+                  "Object storage attachments",
+                  "PostgreSQL backend",
+                  "Redis cache"
+                ],
+                "operations": [
+                  "SSO setup",
+                  "Attachment storage",
+                  "User roles",
+                  "Backup and restore"
+                ],
+                "troubleshooting": [
+                  "OIDC login failure",
+                  "Attachment upload failure",
+                  "Redis connection issue",
+                  "Permission mismatch"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
