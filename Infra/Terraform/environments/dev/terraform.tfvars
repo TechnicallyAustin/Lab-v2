@@ -11,10 +11,9 @@ infra = {
     memory_mb    = 16384
     disk_size    = 100
     datastore_id = "vm-storage"
-    vlan_id      = 30
     bridge       = "vmbr0"
-    ip_address   = "10.0.30.10/24"
-    gateway      = "10.0.30.1"
+    ip_address   = "192.168.0.213/24"
+    gateway      = "192.168.0.1"
   }
   k8s-control-01 = {
     role         = "K8s control plane node"
@@ -28,10 +27,9 @@ infra = {
     memory_mb    = 8192
     disk_size    = 50
     datastore_id = "vm-storage"
-    vlan_id      = 40
     bridge       = "vmbr0"
-    ip_address   = "10.0.40.10/24"
-    gateway      = "10.0.40.1"
+    ip_address   = "192.168.0.214/24"
+    gateway      = "192.168.0.1"
   }
   k8s-worker-01 = {
     role         = "K8s Worker Node"
@@ -45,10 +43,9 @@ infra = {
     memory_mb    = 24576
     disk_size    = 150
     datastore_id = "vm-storage"
-    vlan_id      = 40
     bridge       = "vmbr0"
-    ip_address   = "10.0.40.20/24"
-    gateway      = "10.0.40.1"
+    ip_address   = "192.168.0.215/24"
+    gateway      = "192.168.0.1"
   }
   k8s-worker-02 = {
     role         = "K8s Worker Node"
@@ -62,10 +59,9 @@ infra = {
     memory_mb    = 49152
     disk_size    = 150
     datastore_id = "vm-storage"
-    vlan_id      = 40
     bridge       = "vmbr0"
-    ip_address   = "10.0.40.30/24"
-    gateway      = "10.0.40.1"
+    ip_address   = "192.168.0.216/24"
+    gateway      = "192.168.0.1"
   }
 
   ## HP Mini Proxmox VM's
@@ -82,10 +78,9 @@ infra = {
     memory_mb    = 2048
     disk_size    = 32
     datastore_id = "local-lvm"
-    vlan_id      = 10
     bridge       = "vmbr0"
-    ip_address   = "10.0.10.10/24"
-    gateway      = "10.0.10.1"
+    ip_address   = "192.168.0.210/24"
+    gateway      = "192.168.0.1"
   }
   network-01 = {
     role         = "Network Node"
@@ -99,10 +94,9 @@ infra = {
     memory_mb    = 2048
     disk_size    = 32
     datastore_id = "local-lvm"
-    vlan_id      = 20
     bridge       = "vmbr0"
-    ip_address   = "10.0.20.10/24"
-    gateway      = "10.0.20.1"
+    ip_address   = "192.168.0.211/24"
+    gateway      = "192.168.0.1"
   }
   core-infra-01 = {
     role         = "Core Infrastructure Node"
@@ -116,9 +110,8 @@ infra = {
     memory_mb    = 2048
     disk_size    = 32
     datastore_id = "local-lvm"
-    vlan_id      = 20
     bridge       = "vmbr0"
-    ip_address   = "10.0.20.20/24"
-    gateway      = "10.0.20.1"
+    ip_address   = "192.168.0.212/24"
+    gateway      = "192.168.0.1"
   }
 }

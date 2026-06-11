@@ -60,7 +60,7 @@ variable "infra" {
     memory_mb    = number
     disk_size    = number
     datastore_id = string
-    vlan_id      = number
+    vlan_id      = optional(number)
     bridge       = string
     ip_address   = string
     gateway      = string

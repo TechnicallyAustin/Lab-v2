@@ -13,7 +13,7 @@ module "infra" {
   memory_mb    = each.value.memory_mb
   disk_size    = each.value.disk_size
   datastore_id = each.value.datastore_id
-  vlan_id      = each.value.vlan_id
+  vlan_id      = try(each.value.vlan_id, null)
   bridge       = each.value.bridge
   ip_address   = each.value.ip_address
   gateway      = each.value.gateway
