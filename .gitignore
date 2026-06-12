@@ -6,3 +6,4 @@
 *.auto.tfvars
 secrets.tfvars
 TASKS.MD
+DOCS/*
