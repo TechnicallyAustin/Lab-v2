@@ -1,3 +1,4 @@
+---
 # 1. name
 name: Terraform-CI
 
@@ -42,7 +43,7 @@ jobs:
       # 8. steps: fmt
       - name: Terraform Format
         run: terraform fmt -recursive -check
-      
+
       # 9. steps: init
       - name: Terraform Init
         run: terraform init -input=false
@@ -69,5 +70,4 @@ jobs:
         with:
           name: terraform-dev-plan
           path: tfplan
-
-
+          
