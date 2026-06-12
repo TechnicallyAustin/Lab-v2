@@ -1,0 +1,74 @@
+---
+# 1. name
+name: Terraform-CI
+
+# 2. on - Trigger
+on:
+  pull_request:
+    paths:
+      - "Infra/Terraform/**"
+      - ".github/workflows/terraform-ci.yml"
+
+# 3. permissions
+permissions:
+  contents: read
+  pull-requests: read
+
+# 4. env
+env:
+  TF_VERSION: "1.13.4"
+  TF_WORKING_DIR: "Infra/Terraform/environments/dev"
+
+
+# 5. jobs
+jobs:
+  plan-terraform:
+    name: Plan Terraform
+    runs-on: ubuntu-latest
+    environment: lab-secrets
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      # 6. steps: checkout
+      - name: Checkout Repository
+        uses: "actions/checkout@v4"
+
+      # 7. steps: setup terraform
+      - name: Terraform Setup
+        uses: "hashicorp/setup-terraform@v3"
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # 8. steps: fmt
+      - name: Terraform Format
+        run: terraform fmt -recursive -check
+
+      # 9. steps: init
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      # 10. steps: validate
+      - name: Terraform Validate
+        run: terraform validate
+
+      # 11. steps: plan
+      - name: Terraform Plan
+        env:
+          TF_VAR_proxmox_api_token_id: ${{ secrets.PROXMOX_API_TOKEN_ID }}
+          TF_VAR_proxmox_api_token_secret: ${{ secrets.PROXMOX_API_TOKEN_SECRET }}
+          TF_VAR_proxmox_endpoint: ${{ secrets.PROXMOX_ENDPOINT }}
+          TF_VAR_proxmox_ssh_user: ${{ secrets.PROXMOX_SSH_USER }}
+          TF_VAR_proxmox_ssh_password: ${{ secrets.PROXMOX_SSH_PASSWORD }}
+          TF_VAR_vm_username: ${{ secrets.VM_USERNAME }}
+          TF_VAR_vm_password: ${{ secrets.VM_PASSWORD }}
+        run: terraform plan -input=false -out=tfplan
+
+      # 12. steps: upload artifact
+      - name: Terraform Plan Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-dev-plan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          if-no-files-found: error
+          
