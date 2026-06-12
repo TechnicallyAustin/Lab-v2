@@ -1,0 +1,185 @@
+# Start by naming the workflow clearly.
+# This is the label you will see in GitHub Actions and PR checks.
+# Example idea: "Terraform CI" or "Terraform Plan".
+
+# Decide when this workflow should run.
+# For a first Terraform CI pipeline, start with pull_request.
+# Why: CI should validate infrastructure changes before merge, not mutate infra.
+#
+# In this repo, your path filter should probably watch:
+# - Infra/Terraform/**
+# - .github/workflows/terraform-ci.yml
+#
+# Add push later only if you want feedback on branch pushes too.
+
+# Set permissions explicitly.
+# Start minimal.
+# For a plan-only workflow, read access is usually enough.
+# Think about:
+# - contents: read
+# - pull-requests: read
+#
+# Only increase permissions if the workflow truly needs them.
+
+# Add top-level env values for things you do not want repeated.
+# Good candidates in this repo:
+# - TF_VERSION
+# - TF_WORKING_DIR
+#
+# Your working directory should point at the real environment path, not the repo root.
+# For this lab, that is:
+# Infra/Terraform/environments/dev
+
+# Create one job for Terraform validation and planning.
+# The job name should describe what the check is doing.
+# This name will appear in PR status checks.
+
+# Pick a runner.
+# ubuntu-latest is the normal starting point for Terraform CI.
+
+# Use defaults.run.working-directory so every terraform command runs in the same place.
+# This avoids writing the path on every step and prevents mistakes.
+
+# Your first steps should usually be:
+# 1. checkout the repo
+# 2. install/setup Terraform
+#
+# Ask yourself for each step:
+# - what tool do I need?
+# - what version do I want?
+# - do I want this pinned for reproducibility?
+
+# Add a formatting step early.
+# Why: terraform fmt is cheap and should fail fast before expensive steps run.
+# In this repo, recursive formatting check makes more sense than a single-file check.
+
+# Add terraform init next.
+# Why: CI runners are ephemeral and do not keep provider plugins or initialized state.
+#
+# Think about whether init should use:
+# - -input=false
+# so the workflow never waits for interactive input.
+
+# Add terraform validate after init.
+# Why: validate checks configuration structure and catches obvious errors before planning.
+#
+# Important: validate does not prove provider auth or plan success.
+
+# Add terraform plan after validate.
+# This is the core review artifact for infra changes.
+#
+# In your repo, this step needs secrets because the Proxmox provider depends on:
+# - proxmox_api_token_id
+# - proxmox_api_token_secret
+# - proxmox_endpoint
+# - proxmox_ssh_user
+# - proxmox_ssh_password
+# - vm_username
+# - vm_password
+#
+# In GitHub Actions, Terraform variables are commonly passed as TF_VAR_* env vars.
+# You should map each required Terraform variable to a GitHub secret.
+#
+# Also think about whether you want:
+# - terraform plan -input=false
+# - terraform plan -out=tfplan
+#
+# Writing the plan to a file is useful if you want to upload it as an artifact.
+
+# Add an artifact upload step after plan.
+# Why: a saved plan is more reviewable and more useful than only log output.
+#
+# Ask yourself:
+# - what should the artifact be named?
+# - where does tfplan get written relative to TF_WORKING_DIR?
+
+# Optional but useful: add a workflow summary step.
+# Why: summaries make it easier to understand what happened without opening each log section.
+#
+# Good summary items:
+# - working directory
+# - Terraform version
+# - which checks ran
+# - artifact name
+
+# Design intent for this file:
+# - CI validates Terraform safely
+# - CI does not apply changes
+# - CI is scoped to the dev environment first
+# - CI fails early on formatting or validation problems
+# - CI produces something reviewable for infrastructure changes
+
+# When you write the real YAML, build it in this order:
+# 1. name
+name: Terraform-CI
+
+# 2. on - Trigger
+on:
+  pull_request:
+    paths:
+      - "Infra/Terraform/**"
+      - ".github/workflows/terraform-ci.yml"
+
+# 3. permissions
+permissions:
+  contents: read
+  pull-requests: read
+
+# 4. env
+env:
+  TF_VERSION: "1.13.4"
+  TF_WORKING_DIR: "Infra/Terraform/environments/dev"
+
+
+# 5. jobs
+jobs:
+  plan-terraform:
+    name: Plan Terraform
+    runs-on: ubuntu-latest
+    environment: lab-secrets
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+    steps:
+      # 6. steps: checkout
+      - name: Checkout Repository
+        uses: "actions/checkout@v4"
+
+      # 7. steps: setup terraform
+      - name: Terraform Setup
+        uses: "hashicorp/setup-terraform@v3"
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # 8. steps: fmt
+      - name: Terraform Format
+        run: terraform fmt -recursive -check
+      
+      # 9. steps: init
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      # 10. steps: validate
+      - name: Terraform Validate
+        run: terraform validate
+
+      # 11. steps: plan
+      - name: Terraform Plan
+        env:
+          TF_VAR_proxmox_api_token_id: ${{ secrets.PROXMOX_API_TOKEN_ID }}
+          TF_VAR_proxmox_api_token_secret: ${{ secrets.PROXMOX_API_TOKEN_SECRET }}
+          TF_VAR_proxmox_endpoint: ${{ secrets.PROXMOX_ENDPOINT }}
+          TF_VAR_proxmox_ssh_user: ${{ secrets.PROXMOX_SSH_USER }}
+          TF_VAR_proxmox_ssh_password: ${{ secrets.PROXMOX_SSH_PASSWORD }}
+          TF_VAR_vm_username: ${{ secrets.VM_USERNAME }}
+          TF_VAR_vm_password: ${{ secrets.VM_PASSWORD }}
+        run: terraform plan -input=false -out=tfplan
+
+      # 12. steps: upload artifact
+      - name: Terraform Plan Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-dev-plan
+          path: tfplan
+
+
