@@ -69,5 +69,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: terraform-dev-plan
-          path: tfplan
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          if-no-files-found: error
           
