@@ -1,0 +1,8 @@
+---
+# Default variables for the data role
+
+  # postgres
+  # Redis
+  # MongoDB
+  # Clickhouse
+  # Minio
