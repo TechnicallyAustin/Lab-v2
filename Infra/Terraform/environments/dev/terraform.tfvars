@@ -1,4 +1,4 @@
-infra = {
+platform = {
   data-01 = {
     role         = "Lab Data Infrastructure"
     description  = "Lab Database Infrastructure VM Hosting Data and Storage Services."
@@ -63,55 +63,48 @@ infra = {
     ip_address   = "192.168.0.216/24"
     gateway      = "192.168.0.1"
   }
+}
 
-  ## HP Mini Proxmox VM's
-
-  ansible-01 = {
-    role         = "Ansible Node"
-    description  = "Ansible Node VM Hosting Ansible Services."
-    on_boot      = true
-    name         = "ansible-01"
-    node_name    = "infra-01"
-    vm_id        = 106
-    clone_vm_id  = 9998
-    cores        = 2
-    memory_mb    = 2048
-    disk_size    = 32
-    datastore_id = "local-lvm"
-    bridge       = "vmbr0"
-    ip_address   = "192.168.0.210/24"
-    gateway      = "192.168.0.1"
-  }
+## HP Mini Proxmox VM's
+infrastructure = {
   network-01 = {
-    role         = "Network Node"
-    description  = "Network Node VM Hosting Core Network Services."
-    on_boot      = true
-    name         = "network-01"
-    node_name    = "infra-01"
-    vm_id        = 107
-    clone_vm_id  = 9998
-    cores        = 2
-    memory_mb    = 2048
-    disk_size    = 32
-    datastore_id = "local-lvm"
-    bridge       = "vmbr0"
-    ip_address   = "192.168.0.211/24"
-    gateway      = "192.168.0.1"
+    role             = "Network Node"
+    description      = "Network Node VM Hosting Core Network Services."
+    start_on_boot    = true
+    hostname             = "network-01"
+    node_name        = "infra-01"
+    template_file_id = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+    os_type          = "ubuntu"
+    unprivileged     = true
+    nesting          = true
+    started          = true
+    vm_id            = 106
+    cores            = 2
+    memory_mb        = 2048
+    disk_size        = 32
+    datastore_id     = "local-lvm"
+    bridge           = "vmbr0"
+    ip_address       = "192.168.0.211/24"
+    gateway          = "192.168.0.1"
   }
-  core-infra-01 = {
-    role         = "Core Infrastructure Node"
-    description  = "Core Infrastructure Node VM Hosting Core Infrastructure Services."
-    on_boot      = true
-    name         = "core-infra-01"
-    node_name    = "infra-01"
-    vm_id        = 108
-    clone_vm_id  = 9998
-    cores        = 1
-    memory_mb    = 2048
-    disk_size    = 32
-    datastore_id = "local-lvm"
-    bridge       = "vmbr0"
-    ip_address   = "192.168.0.212/24"
-    gateway      = "192.168.0.1"
+  infra-01 = {
+    role             = "Core Infrastructure Node"
+    description      = "Core Infrastructure Node VM Hosting Core Infrastructure Services."
+    start_on_boot    = true
+    hostname         = "core-infra-01"
+    node_name        = "infra-01"
+    template_file_id = "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+    os_type          = "ubuntu"
+    unprivileged     = true
+    nesting          = true
+    started          = true
+    vm_id            = 107
+    cores            = 2
+    memory_mb        = 2048
+    disk_size        = 32
+    datastore_id     = "local-lvm"
+    bridge           = "vmbr0"
+    ip_address       = "192.168.0.212/24"
+    gateway          = "192.168.0.1"
   }
 }

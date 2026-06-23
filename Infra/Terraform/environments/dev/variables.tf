@@ -42,12 +42,18 @@ variable "vm_username" {
 }
 
 variable "vm_password" {
-  description = "Password for the VM user (set in secrets.auto.tfvars)"
+  description = "Password for the VM user account"
   type        = string
   sensitive   = true
 }
 
-variable "infra" {
+variable "lxc_password" {
+  description = "Password for the LXC user account"
+  type        = string
+  sensitive   = true
+}
+
+variable "platform" {
   type = map(object({
     role         = string
     description  = string
@@ -64,5 +70,29 @@ variable "infra" {
     bridge       = string
     ip_address   = string
     gateway      = string
+  }))
+}
+
+variable "infrastructure" {
+  type = map(object({
+    role             = string
+    description      = string
+    start_on_boot    = bool
+    hostname             = string
+    node_name        = string
+    vm_id            = number
+    template_file_id = string
+    os_type          = string
+    unprivileged     = bool
+    nesting          = bool
+    started          = bool
+    cores            = number
+    memory_mb        = number
+    disk_size        = number
+    datastore_id     = string
+    vlan_id          = optional(number)
+    bridge           = string
+    ip_address       = string
+    gateway          = string
   }))
 }
