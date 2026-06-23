@@ -1,0 +1,9 @@
+# Enable Network Services
+
+# enable Tailscale
+
+# Enable Traefik
+
+# Enable adgaurd
+
+# Set working directory for containers

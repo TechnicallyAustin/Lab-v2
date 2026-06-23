@@ -1,2 +1,14 @@
 ---
 # Default variables for the infra role
+
+# Enable Docker
+
+# enable Authentik
+
+# Enable Vaultwarden
+
+# Enable Watchdog
+
+# Infra Authentic Dir
+
+# Infra Vaultwarden Dir

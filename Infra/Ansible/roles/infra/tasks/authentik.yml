@@ -1,0 +1,36 @@
+---
+
+# Create Authentik Directory
+- name: Create the Authentik Directory
+  ansible.builtin.file:
+    path: "{{ infra_authentik_dir }}"
+    state: directory
+    owner:
+    group:
+    mode:
+
+# Template Authentik Env
+- name: Template the Authentik Env
+  ansible.builtin.template:
+    src:
+    dest:
+    owner:
+    group:
+    mode:
+
+# Template Authentik Container
+- name: Template the Authentik container
+  ansible.builtin.template:
+    src:
+    dest:
+    owner:
+    group:
+    mode:
+
+
+# Start Authentik Stack
+- name: Start the Authenik Stack
+  community.docker.docker_compose_v2:
+    project_src:
+    state:
+    pull:
