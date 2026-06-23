@@ -55,7 +55,7 @@ resource "proxmox_virtual_environment_container" "this" {
     nesting = var.nesting
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
+ # lifecycle {
+ #   prevent_destroy = true
+ # }
 }

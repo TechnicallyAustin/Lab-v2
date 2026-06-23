@@ -123,7 +123,6 @@ variable "gateway" {
   }
 }
 
-
 variable "lxc_password" {
   description = "Password for the LXC user"
   type        = string

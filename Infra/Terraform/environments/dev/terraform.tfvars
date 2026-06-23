@@ -15,11 +15,11 @@ platform = {
     ip_address   = "192.168.0.213/24"
     gateway      = "192.168.0.1"
   }
-  k8s-control-01 = {
+  k3s-control-01 = {
     role         = "K3s control plane node"
     description  = "K3s control plane node VM Hosting Kubernetes Control Plane Services."
     on_boot      = true
-    name         = "k8s-control-01"
+    name         = "k3s-control-01"
     node_name    = "platform-01"
     vm_id        = 103
     clone_vm_id  = 9999
@@ -31,7 +31,7 @@ platform = {
     ip_address   = "192.168.0.214/24"
     gateway      = "192.168.0.1"
   }
-  k8s-worker-01 = {
+  k3s-worker-01 = {
     role         = "K3s Worker Node"
     description  = "K3s Worker Node VM Hosting Kubernetes Worker Services. - Apps, Automation and Observability"
     on_boot      = true
@@ -47,7 +47,7 @@ platform = {
     ip_address   = "192.168.0.215/24"
     gateway      = "192.168.0.1"
   }
-  k8s-worker-02 = {
+  k3s-worker-02 = {
     role         = "K3s Worker Node"
     description  = "K3s Worker Node VM Hosting Kubernetes Worker Services. - AI and Dev Platform"
     on_boot      = true
