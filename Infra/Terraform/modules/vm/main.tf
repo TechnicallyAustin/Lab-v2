@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     proxmox = {
-      source  = "bpg/proxmox"
+      source = "bpg/proxmox"
     }
   }
 }
@@ -13,10 +13,10 @@ resource "proxmox_virtual_environment_vm" "this" {
   on_boot         = var.on_boot
   stop_on_destroy = true
 
-  lifecycle {
-      prevent_destroy = true
-      ignore_changes = [clone]
-  }
+  # lifecycle {
+  #     prevent_destroy = true
+  #     ignore_changes = [clone]
+  # }
 
   clone { vm_id = var.clone_vm_id }
 

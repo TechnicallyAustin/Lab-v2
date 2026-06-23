@@ -1,0 +1,12 @@
+---
+# Main task file for the data role
+
+# postgres
+# Redis
+# MongoDB
+# Clickhouse
+# Minio
+# ChromaDB
+# Qdrant
+# Pg Vector
+# Backup Cron

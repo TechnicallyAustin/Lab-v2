@@ -1,0 +1,8 @@
+---
+- name: configure all
+  hosts: all
+  become: true
+
+  roles:
+    - common
+
