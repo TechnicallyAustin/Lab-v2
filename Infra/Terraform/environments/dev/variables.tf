@@ -78,7 +78,7 @@ variable "infrastructure" {
     role             = string
     description      = string
     start_on_boot    = bool
-    hostname             = string
+    hostname         = string
     node_name        = string
     vm_id            = number
     template_file_id = string
