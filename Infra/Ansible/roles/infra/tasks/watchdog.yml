@@ -17,6 +17,6 @@
 # Start the WAtchdog Service
 - name: Start watchdog Service
   ansible.builtin.service:
-    name:
-    enabled:
-    state:
+    name: watchdog
+    enabled: true
+    state: present

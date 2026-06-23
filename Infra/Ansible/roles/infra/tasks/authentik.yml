@@ -32,5 +32,5 @@
 - name: Start the Authenik Stack
   community.docker.docker_compose_v2:
     project_src:
-    state:
-    pull:
+    state: present
+    pull: always

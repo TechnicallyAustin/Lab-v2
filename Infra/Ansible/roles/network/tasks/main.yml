@@ -1,6 +1,2 @@
 ---
-# Network role tasks
-
-# DNS
-# VPN
-# Reverse Proxy (Traefik)
+# Includes Default Variables and Orchestrates Role playbooks
