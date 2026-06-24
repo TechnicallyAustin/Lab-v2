@@ -13,10 +13,12 @@
     owner:
     group:
     mode:
+  become: true
 
-# Start the WAtchdog Service
+# Start the Watchdog Service
 - name: Start watchdog Service
   ansible.builtin.service:
     name: watchdog
     enabled: true
     state: present
+  become: true

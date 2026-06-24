@@ -5,27 +5,30 @@
   ansible.builtin.file:
     path: "{{ infra_authentik_dir }}"
     state: directory
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 # Template Authentik Env
 - name: Template the Authentik Env
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 # Template Authentik Container
 - name: Template the Authentik container
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 
 # Start Authentik Stack
@@ -34,3 +37,4 @@
     project_src:
     state: present
     pull: always
+  become: true

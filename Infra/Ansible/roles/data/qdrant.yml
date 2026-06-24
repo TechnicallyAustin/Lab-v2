@@ -1,0 +1,3 @@
+---
+# Qdrant Role
+# This Ansible role is responsible for setting up and configuring Qdrant.

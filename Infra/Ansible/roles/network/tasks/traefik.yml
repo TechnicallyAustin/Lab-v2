@@ -3,26 +3,29 @@
 # Set Traefik working directory
 - name: Set Traefik Working Directory
   ansible.builtin.file:
-    path: ${{ infra_traefik_dir }}
+    path: "{{ infra_traefik_dir }}"
     state: directory
+  become: true
 
 # Template Traefik Env
 - name: Template the Traefik env
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 # Template Traefik Container
 - name: Template the Traefik Container
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 # Start the Traefik Container
 - name: Start the Traefik Container
@@ -30,3 +33,4 @@
     project_src:
     state: present
     pull: always
+  become: true

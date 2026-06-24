@@ -4,17 +4,20 @@
   ansible.builtin.apt:
     name: tailscale
     state: present
+  become: true
 
 - name: Configure TailScale
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 - name: Start Tailscale
   ansible.builtin.service:
     name: tailscale
     enabled: true
-    state: started
+    state: present
+  become: true

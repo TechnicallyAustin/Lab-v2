@@ -1,26 +1,32 @@
 # set Adguard Working Directory
 - name: Create Adgaurd Working Directory
   ansible.builtin.file:
-  path: ${{ INFRA_ADGUARD_WORKING_DIR }}
-  state: directory
+    path: "{{ INFRA_ADGUARD_WORKING_DIR }}"
+    state: directory
+    owner: root
+    group: root
+    mode:
+  become: true
 
 # Template Adgaurd env
 - name: Template Adguard from .ENV
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 # Template Adgaurd Container
 - name: Template the Adguard Container
   ansible.builtin.template:
     src:
     dest:
-    owner:
-    group:
+    owner: root
+    group: root
     mode:
+  become: true
 
 # Start the Adgaurd Container
 - name: Start the Adguard Container
@@ -28,3 +34,4 @@
     project_src:
     state: present
     pull: always
+  become: true

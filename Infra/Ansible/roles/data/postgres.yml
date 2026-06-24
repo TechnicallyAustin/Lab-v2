@@ -1,0 +1,3 @@
+---
+# PostgreSQL Role
+# This Ansible role is responsible for setting up and configuring PostgreSQL
