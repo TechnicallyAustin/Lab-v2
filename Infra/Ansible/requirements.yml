@@ -5,17 +5,17 @@ roles:
   #---------------------------#
 
   # Networking / VPN - Tailscale
-  - name: artis3n.tailscale
+  - name: tailscale
     src: artis3n.tailscale
     version: "v5.0.1"
 
   # DNS / AdBlocking - Adguard
-  - name: bcook254.adguardhome
+  - name: adguardhome
     src: bcook254.adguardhome
     version: "107.77.0"
 
   # Reverse Proxy - Traefik
-  - name: arillso.traefik
+  - name: traefik
     src: arillso.traefik
     version: "1.0.2"
 
@@ -25,17 +25,17 @@ roles:
 
 
   # Identity - Authentik
-  - name: ax-bzh.authentik
+  - name: authentik
     src: ax-bzh.authentik
     version: "1.0.0"
 
   # Password Vault - Vaultwarden
-  - name: foi.vaultwarden_docker
+  - name: vaultwarden
     src: foi.vaultwarden_docker
     version: "1.0.7"
 
   # NTP - Time Sync
-  - name: geerlingguy.ntp
+  - name: ntp
     src: geerlingguy.ntp
     version: "2.5.0"
 
@@ -44,22 +44,22 @@ roles:
   #---------------------------#
 
   # Database - Postgres SQL - Extend role into Pg Vector
-  - name: geerlingguy.postgresql
+  - name: postgresql
     src: geerlingguy.postgresql
     version: "4.1.0"
 
   # Database - MongoDB NOSQL
-  - name: trfore.mongodb_install
+  - name: mongodb
     src: trfore.mongodb_install
     version: "v3.0.4"
 
   # Caching - Redis
-  - name: geerlingguy.redis
+  - name: redis
     src: geerlingguy.redis
     version: "1.9.1"
 
   # Monitoring - Clickhouse
-  - name: kostiantyn-nemchenko.clickhouse
+  - name: clickhouse
     src: kostiantyn-nemchenko.clickhouse
   # Tracks main for version
 
@@ -75,7 +75,7 @@ roles:
   #---------------------------#
 
   # Compute - Kubernetes (k3's)
-  - name: xanmanning.k3s
+  - name: k3s
     src: xanmanning.k3s
     version: "v3.4.0"
 
