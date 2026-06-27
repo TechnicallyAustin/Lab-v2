@@ -1,0 +1,70 @@
+---
+- name: Get existing policies
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_policies
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing geoip policies
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/geoip/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_geoip_policies
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "{{ ('Create' if new_policy else 'Update') ~ ' policy: ' ~ policy.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/geoip/{{ policy_pk ~ '/' if not new_policy}}"
+    method: "{{ 'POST' if new_policy else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ policy.name }}"
+      execution_logging: "{{ policy.execution_logging if 'execution_logging' in policy else omit }}"
+      asns: "{{ policy.ASNs if 'ASNs' in policy else omit }}"
+      countries: "{{ policy.countries if 'countries' in policy or new_policy else omit }}"
+      check_history_distance: "{{ policy.check_history_distance if 'check_history_distance' in policy else omit }}"
+      history_max_distance_km: "{{ policy.history_max_distance_km if 'history_max_distance_km' in policy else omit }}"
+      distance_tolerance_km: "{{ policy.distance_tolerance_km if 'distance_tolerance_km' in policy else omit }}"
+      history_login_count: "{{ policy.history_login_count if 'history_login_count' in policy else omit }}"
+      check_impossible_travel: "{{ policy.check_impossible_travel if 'check_impossible_travel' in policy else omit }}"
+      impossible_tolerance_km: "{{ policy.impossible_tolerance_km if 'Aimpossible_tolerance_kmSNs' in policy else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_policy else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_policy
+  vars:
+    policy_pk: >-
+      {{
+        authentik_existing_policies.json.results
+        | selectattr('name', 'equalto', policy.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_policy: "{{ policy_pk is none }}"
+  changed_when: >-
+    new_policy or
+    (authentik_custom_policy.json
+    !=
+    (authentik_existing_geoip_policies.json.results
+    | selectattr('pk', 'equalto', policy_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

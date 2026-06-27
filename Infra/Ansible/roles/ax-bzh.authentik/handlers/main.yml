@@ -1,0 +1,27 @@
+---
+- name: Restart Authentik
+  community.docker.docker_compose_v2:
+    project_src: "{{ install_dir }}"
+    state: restarted
+  listen: "Restart Authentik"
+
+- name: Restart Authentik server only
+  ansible.builtin.command:
+    cmd: docker restart {{ install_server_container_name }}
+  changed_when: true
+  listen: "Restart Authentik server"
+
+- name: Restart Authentik worker only
+  ansible.builtin.command:
+    cmd: docker restart {{ install_worker_container_name }}
+  changed_when: true
+  listen: "Restart Authentik worker"
+
+- name: Update Authentik roles
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/permissions/assigned_by_roles/"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+  register: authentik_current_roles_permissions

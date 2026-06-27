@@ -1,0 +1,96 @@
+---
+- name: Get existing stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing authenticator static stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/authenticator/static/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_auth_static_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flows
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Assert configure flow exists
+  ansible.builtin.assert:
+    that: >-
+      stage.configure_flow_slug in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ stage.configure_flow_slug }}' not found in existing flows"
+    quiet: true
+  when:
+    - stage.configure_flow_slug is defined
+    - stage.configure_flow_slug | length > 0
+
+- name: "{{ ('Create' if new_stage else 'Update') ~ ' stage: ' ~ stage.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/authenticator/static/{{ stage_pk ~ '/' if not new_stage}}"
+    method: "{{ 'POST' if new_stage else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ stage.name }}"
+      friendly_name: "{{ stage.friendly_name if 'friendly_name' in stage else omit }}"
+      token_count: "{{ stage.token_count if 'token_count' in stage or new_stage else omit }}"
+      token_length: "{{ stage.token_length if 'autoken_lengthth' in stage or new_stage else omit }}"
+      configure_flow: "{{ configure_flow_pk if 'configure_flow_slug' in stage else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_stage else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_stage
+  vars:
+    stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_stage: "{{ stage_pk is none }}"
+    configure_flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', stage.configure_flow_slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+  changed_when: >-
+    new_stage or
+    (authentik_custom_stage.json
+    !=
+    (authentik_existing_auth_static_stages.json.results
+    | selectattr('pk', 'equalto', stage_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

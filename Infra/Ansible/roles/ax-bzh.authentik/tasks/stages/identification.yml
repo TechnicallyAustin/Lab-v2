@@ -1,0 +1,215 @@
+---
+- name: Get existing stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing identification stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/identification/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_identification_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flows
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing sources
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/sources/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_sources
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Assert that password stage exist
+  when:
+    - stage.password_stage_name is defined
+    - stage.password_stage_name | length > 0
+  ansible.builtin.assert:
+    that: >-
+      stage.password_stage_name in authentik_existing_stages.json.results | map(attribute='name') | list
+    fail_msg: "Stage '{{ stage.password_stage_name }}' not found in existing stages"
+    quiet: true
+
+- name: Assert that captcha stage exist
+  when:
+    - stage.captcha_stage_name is defined
+    - stage.captcha_stage_name | length > 0
+  ansible.builtin.assert:
+    that: >-
+      stage.captcha_stage_name in authentik_existing_stages.json.results | map(attribute='name') | list
+    fail_msg: "Stage '{{ stage.captcha_stage_name }}' not found in existing stages"
+    quiet: true
+
+- name: Assert that webauthn stage exist
+  when:
+    - stage.webauthn_stage_name is defined
+    - stage.webauthn_stage_name | length > 0
+  ansible.builtin.assert:
+    that: >-
+      stage.webauthn_stage_name in authentik_existing_stages.json.results | map(attribute='name') | list
+    fail_msg: "Stage '{{ stage.webauthn_stage_name }}' not found in existing stages"
+    quiet: true
+
+- name: Assert that passwordless flow exist
+  when:
+    - stage.passwordless_flow_slug is defined
+    - stage.passwordless_flow_slug | length > 0
+  ansible.builtin.assert:
+    that: >-
+      stage.passwordless_flow_slug in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ stage.passwordless_flow_slug }}' not found in existing flows"
+    quiet: true
+
+- name: Assert that enrollment flow exist
+  when:
+    - stage.enrollment_flow_slug is defined
+    - stage.enrollment_flow_slug | length > 0
+  ansible.builtin.assert:
+    that: >-
+      stage.enrollment_flow_slug in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ stage.enrollment_flow_slug }}' not found in existing flows"
+    quiet: true
+
+- name: Assert that recovery flow exist
+  when:
+    - stage.recovery_flow_slug is defined
+    - stage.recovery_flow_slug | length > 0
+  ansible.builtin.assert:
+    that: >-
+      stage.recovery_flow_slug in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ stage.recovery_flow_slug }}' not found in existing flows"
+    quiet: true
+
+- name: "{{ ('Create' if new_stage else 'Update') ~ ' stage: ' ~ stage.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/identification/{{ stage_pk ~ '/' if not new_stage}}"
+    method: "{{ 'POST' if new_stage else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ stage.name }}"
+      user_fields: "{{ stage.user_fields if 'user_fields' in stage else omit }}"
+      password_stage: "{{ password_stage_pk if 'password_stage_name' in stage else omit }}"
+      captcha_stage: "{{ captcha_stage_pk if 'captcha_stage_name' in stage else omit }}"
+      case_insensitive_matching: "{{ stage.case_insensitive_matching if 'case_insensitive_matching' in stage else omit }}"
+      pretend_user_exists: "{{ stage.pretend_user_exists if 'pretend_user_exists' in stage else omit }}"
+      show_matched_user: "{{ stage.show_matched_user if 'show_matched_user' in stage else omit }}"
+      enable_remember_me: "{{ stage.enable_remember_me if 'enable_remember_me' in stage else omit }}"
+      sources: "{{ sources_pk if 'sources_name' in stage else omit }}"
+      show_source_labels: "{{ stage.show_source_labels if 'show_source_labels' in stage else omit }}"
+      passwordless_flow: "{{ passwordless_flow_pk if 'passwordless_flow_slug' in stage else omit }}"
+      enrollment_flow: "{{ enrollment_flow_pk if 'enrollment_flow_slug' in stage else omit }}"
+      recovery_flow: "{{ recovery_flow_pk if 'recovery_flow_slug' in stage else omit }}"
+      webauthn_stage: "{{ webauthn_stage_pk if 'webauthn_stage_name' in stage else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_stage else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_stage
+  vars:
+    stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_stage: "{{ stage_pk is none }}"
+    password_stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.password_stage_name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    captcha_stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.captcha_stage_name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    webauthn_stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.webauthn_stage_name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    sources_pk: >-
+      {{
+        authentik_existing_sources.json.results
+        | selectattr('name', 'in', stage.sources_name | default([]))
+        | map(attribute='pk')
+        | list
+      }}
+    passwordless_flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', stage.passwordless_flow_slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    enrollment_flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', stage.enrollment_flow_slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    recovery_flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', stage.recovery_flow_slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+  changed_when: >-
+    new_stage or
+    (authentik_custom_stage.json
+    !=
+    (authentik_existing_identification_stages.json.results
+    | selectattr('pk', 'equalto', stage_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

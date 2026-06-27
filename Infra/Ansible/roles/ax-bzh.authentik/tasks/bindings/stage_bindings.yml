@@ -1,0 +1,83 @@
+---
+- name: Get existing flow stage bindings
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/bindings/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flow_stage_bindings
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: >-
+    {{ ('Create' if new_flow_stage_binding else 'Update') ~ ' flow stage binding.
+    Stage : ' ~ stage_binding.stage_name ~ ' > Flow : ' ~ flow_binding.flow_slug }}
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/bindings/{{ flow_stage_binding_pk ~ '/' if not new_flow_stage_binding}}"
+    method: "{{ 'POST' if new_flow_stage_binding else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      target: "{{ stage_target }}"
+      stage: "{{ stage_pk if 'stage_name' in stage_binding or new_flow_stage_binding else omit }}"
+      evaluate_on_plan: "{{ stage_binding.evaluate_on_plan if 'evaluate_on_plan' in stage_binding else omit }}"
+      re_evaluate_policies: "{{ stage_binding.re_evaluate_policies if 're_evaluate_policies' in stage_binding else omit }}"
+      order: "{{ stage_binding.order if 'order' in stage_binding or new_flow_stage_binding else omit }}"
+      policy_engine_mode: "{{ stage_binding.policy_engine_mode if 'policy_engine_mode' in stage_binding else omit }}"
+      invalid_response_action: "{{ stage_binding.invalid_response_action if 'invalid_response_action' in stage_binding else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_flow_stage_binding else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_flow_stage_binding
+  vars:
+    stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage_binding.stage_name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    flow_stage_binding_pk: >-
+      {{
+        authentik_existing_flow_stage_bindings.json.results
+        | selectattr('target', 'equalto', stage_target)
+        | selectattr('stage', 'equalto', stage_pk)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_flow_stage_binding: "{{ flow_stage_binding_pk is none }}"
+  changed_when: >-
+    new_flow_stage_binding or
+    ((authentik_custom_flow_stage_binding.json
+    | dict2items
+    | rejectattr('key', 'equalto', 'stage_obj')
+    | items2dict)
+    !=
+    (authentik_existing_flow_stage_bindings.json.results
+    | selectattr('target', 'equalto', stage_target)
+    | selectattr('stage', 'equalto', stage_pk)
+    | first
+    | dict2items
+    | rejectattr('key', 'equalto', 'stage_obj')
+    | items2dict
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Bind policies on stage : {{ stage_binding.stage_name }}"
+  ansible.builtin.include_tasks: bindings/policy_bindings.yml
+  when: stage_binding.stage_policies_bindings is defined
+  loop: "{{ stage_binding.stage_policies_bindings | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "Policy : {{ policy_binding.policy_name }}"
+    loop_var: policy_binding
+  vars:
+    target_type: stage
+    policy_target: "{{ authentik_custom_flow_stage_binding.json.pk }}"

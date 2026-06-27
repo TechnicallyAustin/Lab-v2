@@ -1,0 +1,149 @@
+---
+- name: Validate required variables
+  delegate_to: localhost
+  ansible.builtin.assert:
+    that:
+      - authentik_postgres_user is defined
+      - authentik_postgres_user | length > 0
+
+      - authentik_postgres_password is defined
+      - authentik_postgres_password is match ('^(?:[^/@"]){8,99}$')
+
+      - authentik_subdomain is defined
+      - authentik_subdomain | length > 0
+      - authentik_subdomain is match ("(?=^.{1,63}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)?[a-zA-Z]{1,63}$)")
+
+      - authentik_base_domain is defined
+      - authentik_base_domain | length > 0
+      - authentik_base_domain is match ("(?=^.{4,63}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)")
+
+      - authentik_secret_key is defined
+      - authentik_secret_key | length > 0
+      - authentik_secret_key is match ("^(?:\d|[a-zA-Z0-9]|\+|/){50,99}$")
+
+    fail_msg: "Required Authentik variables not set"
+    quiet: true
+  no_log: true
+
+- name: Validate email variables
+  ansible.builtin.assert:
+    that:
+      - authentik_email_host is defined
+      - authentik_email_host | length > 0
+      - authentik_email_host is match ("(?=^.{4,63}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)")
+
+      - authentik_email_port is defined
+      - authentik_email_port is match ("^\d+$")
+
+      - authentik_email_username is defined
+      - authentik_email_username | length > 0
+      - authentik_email_username is match ("^(?!\.)(?!.*\.\.)(?:[a-z0-9_'+\-\.]*)[a-z0-9_'+\-]@(?:[a-z0-9][a-z0-9\-]*\.)+[a-z]{2,}$")
+
+      - authentik_email_password is defined
+      - authentik_email_password | length > 0
+
+      - authentik_email_from is defined
+      - authentik_email_from | length > 0
+      - authentik_email_from is match ("^(?!\.)(?!.*\.\.)(?:[a-z0-9_'+\-\.]*)[a-z0-9_'+\-]@(?:[a-z0-9][a-z0-9\-]*\.)+[a-z]{2,}$")
+
+    fail_msg: "Required Authentik variables not set"
+    quiet: true
+  # no_log: true
+  when: authentik_email_enabled | bool
+
+- name: Validate bootstrap variables
+  ansible.builtin.assert:
+    that:
+      - authentik_bootstrap_password is defined
+      - authentik_bootstrap_password | length > 0
+
+      - authentik_bootstrap_token is defined
+      - authentik_bootstrap_token | length > 0
+
+      - authentik_bootstrap_email is defined
+      - authentik_bootstrap_email is match ("^(?!\.)(?!.*\.\.)(?:[a-z0-9_'+\-\.]*)[a-z0-9_'+\-]@(?:[a-z0-9][a-z0-9\-]*\.)+[a-z]{2,}$")
+
+    fail_msg: "Required Authentik variables not set"
+    quiet: true
+  no_log: true
+  when: authentik_bootstrap_enabled | bool
+
+- name: Validate secret key length
+  ansible.builtin.assert:
+    that:
+      - authentik_secret_key | length >= 50
+    fail_msg: "authentik_secret_key must be >= 50 characters"
+    quiet: true
+  no_log: true
+
+- name: Check if external networks exist
+  community.docker.docker_network_info:
+    name: "{{ item.name }}"
+  register: authentik_external_networks_info
+  loop: "{{ authentik_external_networks | default([]) }}"
+
+- name: Ensure app directory is present
+  ansible.builtin.file:
+    path: "{{ install_dir }}"
+    state: directory
+    mode: "2755"
+    owner: root
+    group: root
+
+- name: Deploy Authentik docker-compose
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ install_dir }}/docker-compose.yml"
+    mode: '0644'
+    owner: root
+    group: root
+  no_log: true
+
+- name: Start Authentik stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ install_dir }}"
+    state: present
+    pull: always
+
+- name: Wait for Authentik to be healthy
+  community.docker.docker_container_info:
+    name: "{{ item }}"
+  register: authentik_container_info
+  until: authentik_container_info.container.State.Health.Status == "healthy"
+  retries: 30
+  delay: 10
+  loop:
+    - "{{ authentik_postgres_container_name }}"
+    - "{{ authentik_server_container_name }}"
+    - "{{ authentik_worker_container_name }}"
+
+- name: Get authentik server IP address
+  community.docker.docker_container_info:
+    name: "{{ authentik_server_container_name }}"
+  register: authentik_server_container_info
+
+- name: Get authentik worker IP address
+  community.docker.docker_container_info:
+    name: "{{ authentik_worker_container_name }}"
+  register: authentik_worker_container_info
+
+- name: Check server readiness
+  ansible.builtin.uri:
+    url: "http://{{ authentik_server_container_info.container.NetworkSettings.Networks[(authentik_managed_networks | first).name].IPAddress }}:{{ authentik_http_port }}{{ item }}" # noqa:yaml[line-length]
+    method: GET
+    status_code: 200
+  retries: 10
+  delay: 5
+  loop:
+    - "/-/health/live/"
+    - "/-/health/ready/"
+
+- name: Check worker readiness
+  ansible.builtin.uri:
+    url: "http://{{ authentik_server_container_info.container.NetworkSettings.Networks[(authentik_managed_networks | first).name].IPAddress }}:{{ authentik_http_port }}{{ item }}" # noqa:yaml[line-length]
+    method: GET
+    status_code: 200
+  retries: 10
+  delay: 5
+  loop:
+    - "/-/health/ready/"

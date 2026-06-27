@@ -1,0 +1,98 @@
+---
+- name: Get existing stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+  register: authentik_existing_stages
+  retries: 5
+  delay: 20
+
+- name: Get existing prompt stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/prompt/stages/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+  register: authentik_existing_prompt_stages
+  retries: 5
+  delay: 20
+
+- name: Get existing prompts
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/prompt/prompts/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+  register: authentik_existing_prompts
+  retries: 5
+  delay: 20
+
+- name: Get existing policies
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+  register: authentik_existing_policies
+  retries: 5
+  delay: 20
+
+- name: "{{ ('Create' if new_stage else 'Update') ~ ' stage: ' ~ stage.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/prompt/stages/{{ stage_pk ~ '/' if not new_stage}}"
+    method: "{{ 'POST' if new_stage else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ stage.name }}"
+      fields: "{{ fields_pk if 'fields_name' in stage or new_stage else omit }}"
+      validation_policies: "{{ validation_policies_pk if 'validation_policies_name' in stage else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_stage else 200 }}"]
+  register: authentik_custom_stage
+  vars:
+    stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_stage: "{{ stage_pk is none }}"
+    fields_pk: >-
+      {{
+        authentik_existing_prompts.json.results
+        | selectattr('name', 'in', stage.fields_name | default([]))
+        | map(attribute='pk')
+        | list
+      }}
+    validation_policies_pk: >-
+      {{
+        authentik_existing_policies.json.results
+        | selectattr('name', 'in', stage.validation_policies_name | default([]))
+        | map(attribute='pk')
+        | list
+      }}
+  changed_when: >-
+    new_stage or
+    (authentik_custom_stage.json
+    !=
+    (authentik_existing_prompt_stages.json.results
+    | selectattr('pk', 'equalto', stage_pk)
+    | first
+    | default({})))
+  retries: 5
+  delay: 20

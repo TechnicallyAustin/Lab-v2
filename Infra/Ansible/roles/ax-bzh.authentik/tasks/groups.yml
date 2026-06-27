@@ -1,0 +1,101 @@
+---
+- name: Get existing groups
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/groups/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_groups
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing roles
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/roles/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_roles
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing users
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/users/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_users
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "{{ ('Create' if new_group else 'Update') ~ ' group: ' ~ group.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/groups/{{ group_pk ~ '/' if not new_group}}"
+    method: "{{ 'POST' if new_group else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ group.name }}"
+      is_superuser: "{{ group.is_superuser | default(omit, true) }}"
+      parents: "{{ parents_pk if 'parents' in group else omit }}"
+      users: "{{ users_pk if 'users' in group else omit }}"
+      roles: "{{ roles_pk if 'roles' in group else omit }}"
+      attributes: "{{ group.attributes if 'attributes' in group else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_group else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_group
+  vars:
+    group_pk: >-
+      {{
+        authentik_existing_groups.json.results
+        | selectattr('name', 'equalto', group.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_group: "{{ group_pk is none }}"
+    roles_pk: >-
+      {{
+        authentik_existing_roles.json.results
+        | selectattr('name', 'in', group.roles | default([]))
+        | map(attribute='pk')
+        | list
+      }}
+    parents_pk: >-
+      {{
+        authentik_existing_groups.json.results
+        | selectattr('name', 'equalto', group.parent | default(None))
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    users_pk: >-
+      {{
+        authentik_existing_users.json.results
+        | selectattr('name', 'in', group.users | default([]))
+        | map(attribute='pk')
+        | list
+      }}
+  changed_when: >-
+    new_group or
+    (authentik_custom_group.json
+    !=
+    (authentik_existing_groups.json.results
+    | selectattr('pk', 'equalto', group_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

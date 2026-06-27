@@ -1,0 +1,208 @@
+---
+- name: Roles
+  block:
+    - name: Create / Update roles
+      ansible.builtin.include_tasks: roles.yml
+      vars:
+        existing_roles: "{{ authentik_existing_roles }}"
+      loop: "{{ _authentik_config.identities.roles.list | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        label: "{{ role.name }}"
+        loop_var: role
+      when: role.state == 'present'
+
+    - name: Get existing roles
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/rbac/roles/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_existing_roles
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Remove other roles
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/rbac/roles/{{ item }}/"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [204]
+        timeout: "{{ authentik_api_call_timeout }}"
+      loop: "{{ roles_to_delete }}"
+      loop_control:
+        label: "{{ authentik_existing_roles.json.results | selectattr('pk', 'equalto', item) | map(attribute='name') | first }}"
+      vars:
+        roles_to_delete: >-
+          {{
+            (_authentik_config.identities.roles.remove_others | bool) | ternary
+            (
+              authentik_existing_roles.json.results
+                | rejectattr('name', 'in', _authentik_config.identities.roles.list | selectattr('state', 'equalto', 'present') | map(attribute='name'))
+                | map(attribute='pk')
+                | list,
+              authentik_existing_roles.json.results
+                | selectattr('name', 'in', _authentik_config.identities.roles.list | selectattr('state', 'equalto', 'absent') | map(attribute='name'))
+                | map(attribute='pk')
+                | list
+            )
+          }}
+      changed_when: true
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+- name: Groups
+  block:
+    - name: Create / Update groups
+      ansible.builtin.include_tasks: groups.yml
+      loop: "{{ _authentik_config.identities.groups.list | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        label: "{{ group.name }}"
+        loop_var: group
+
+    - name: Remove other groups
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/groups/{{ item }}/"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [204]
+        timeout: "{{ authentik_api_call_timeout }}"
+      loop: "{{ groups_to_delete }}"
+      loop_control:
+        label: "{{ authentik_existing_groups.json.results | selectattr('pk', 'equalto', item) | map(attribute='name') | first }}"
+      vars:
+        groups_to_delete: >-
+          {{
+            (_authentik_config.identities.groups.remove_others | bool) | ternary
+            (
+              authentik_existing_groups.json.results
+                | rejectattr('name', 'in', _authentik_config.identities.groups.list | selectattr('state', 'equalto', 'present') | map(attribute='name'))
+                | map(attribute='pk')
+                | list,
+              authentik_existing_groups.json.results
+                | selectattr('name', 'in', _authentik_config.identities.groups.list | selectattr('state', 'equalto', 'absent') | map(attribute='name'))
+                | map(attribute='pk')
+                | list
+            )
+          }}
+      changed_when: true
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+- name: Users
+  block:
+    - name: Create / Update users
+      ansible.builtin.include_tasks: users.yml
+      loop: "{{ _authentik_config.identities.users.list | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        label: "{{ user.username }}"
+        loop_var: user
+
+    - name: Remove other users
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/users/{{ item }}/"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [204]
+        timeout: "{{ authentik_api_call_timeout }}"
+      loop: "{{ users_to_delete }}"
+      loop_control:
+        label: "{{ authentik_existing_users.json.results | selectattr('pk', 'equalto', item) | map(attribute='username') | first }}"
+      vars:
+        users_to_delete: >-
+          {{
+            (_authentik_config.identities.users.remove_others | bool) | ternary
+            (
+              authentik_existing_users.json.results
+                | rejectattr('username', 'in', _authentik_config.identities.users.list | selectattr('state', 'equalto', 'present') | map(attribute='username'))
+                | rejectattr('path', 'in', authentik_existing_users.json.results | map(attribute='path') | map('regex_search', '^goauthentik\.io.*'))
+                | map(attribute='pk')
+                | list,
+              authentik_existing_users.json.results
+                | selectattr('username', 'in', _authentik_config.identities.users.list | selectattr('state', 'equalto', 'absent') | map(attribute='username'))
+                | map(attribute='pk')
+                | list
+            )
+          }}
+      changed_when: true
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+- name: Tokens
+  block:
+    - name: Create / Update tokens
+      ansible.builtin.include_tasks: tokens.yml
+      loop: "{{ _authentik_config.identities.tokens.list | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        label: "{{ token.identifier }}"
+        loop_var: token
+
+    - name: Remove other tokens
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/tokens/{{ item }}/"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [204]
+        timeout: "{{ authentik_api_call_timeout }}"
+      loop: "{{ tokens_to_delete }}"
+      vars:
+        tokens_to_delete: >-
+          {{
+            (_authentik_config.identities.tokens.remove_others | bool) | ternary
+            (
+              authentik_existing_tokens.json.results
+                | rejectattr('identifier', 'in',
+                  _authentik_config.identities.tokens.list
+                  | selectattr('state', 'equalto', 'present')
+                  | map(attribute='identifier'))
+                | rejectattr('managed', '!=', none)
+                | map(attribute='identifier')
+                | list,
+              authentik_existing_tokens.json.results
+                | selectattr('identifier', 'in',
+                  _authentik_config.identities.tokens.list
+                  | selectattr('state', 'equalto', 'absent')
+                  | map(attribute='identifier'))
+                | rejectattr('managed', '!=', none)
+                | map(attribute='identifier')
+                | list
+            )
+          }}
+      changed_when: true
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+- name: Remove bootstrap user and its token
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/users/{{ user_to_delete }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  vars:
+    user_to_delete: >-
+      {{
+        authentik_existing_users.json.results
+        | selectattr('username', 'equalto', 'akadmin')
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+  when:
+    - _authentik_config.identities.users.remove_bootstrap | bool
+    - user_to_delete is not none
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

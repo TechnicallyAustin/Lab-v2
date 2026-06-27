@@ -1,0 +1,43 @@
+---
+# meta/main.yml - Ansible Galaxy metadata
+
+galaxy_info:
+  role_name: authentik
+  author: ax-bzh
+  description: >-
+    Deploy and configure Authentik identity provider via Docker Compose.
+    Full API-driven configuration for flows, stages, policies, branding,
+    and user management.
+
+  license: MIT
+
+  min_ansible_version: "2.14"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+        - trixie
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+
+  galaxy_tags:
+    - authentik
+    - identity
+    - sso
+    - oauth
+    - oidc
+    - saml
+    - ldap
+    - authentication
+    - authorization
+    - docker
+    - security
+    - homelab
+
+collections:
+  - community.docker
+  - community.general

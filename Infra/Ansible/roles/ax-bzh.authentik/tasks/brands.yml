@@ -1,0 +1,186 @@
+---
+- name: Get authentik brands
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/brands/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Accept: "application/json"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_brands
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flows
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Assert authentication flow exists
+  ansible.builtin.assert:
+    that: >-
+      brand.default_flows_slug.authentication in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ brand.default_flows_slug.authentication }}' not found in existing flows"
+    quiet: true
+  when:
+    - brand.default_flows_slug.authentication is defined
+    - brand.default_flows_slug.authentication | length > 0
+
+- name: Assert invalidation flow exists
+  ansible.builtin.assert:
+    that: >-
+      brand.default_flows_slug.invalidation in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ brand.default_flows_slug.invalidation }}' not found in existing flows"
+    quiet: true
+  when:
+    - brand.default_flows_slug.invalidation is defined
+    - brand.default_flows_slug.invalidation | length > 0
+
+- name: Assert recovery flow exists
+  ansible.builtin.assert:
+    that: >-
+      brand.default_flows_slug.recovery in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ brand.default_flows_slug.recovery }}' not found in existing flows"
+    quiet: true
+  when:
+    - brand.default_flows_slug.recovery is defined
+    - brand.default_flows_slug.recovery | length > 0
+
+- name: Assert unenrollment flow exists
+  ansible.builtin.assert:
+    that: >-
+      brand.default_flows_slug.unenrollment in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ brand.default_flows_slug.unenrollment }}' not found in existing flows"
+    quiet: true
+  when:
+    - brand.default_flows_slug.unenrollment is defined
+    - brand.default_flows_slug.unenrollment | length > 0
+
+- name: Assert user_settings flow exists
+  ansible.builtin.assert:
+    that: >-
+      brand.default_flows_slug.user_settings in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ brand.default_flows_slug.user_settings }}' not found in existing flows"
+    quiet: true
+  when:
+    - brand.default_flows_slug.user_settings is defined
+    - brand.default_flows_slug.user_settings | length > 0
+
+- name: Assert device_code flow exists
+  ansible.builtin.assert:
+    that: >-
+      brand.default_flows_slug.device_code in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ brand.default_flows_slug.device_code }}' not found in existing flows"
+    quiet: true
+  when:
+    - brand.default_flows_slug.device_code is defined
+    - brand.default_flows_slug.device_code | length > 0
+
+- name: "{{ ('Create' if new_brand else 'Update') ~ ' brand: ' ~ brand.domain }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/brands/{{ brand_uuid ~ '/' if not new_brand}}"
+    method: "{{ 'POST' if new_brand else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      domain: "{{ brand.domain }}"
+      default: "{{ brand.default if 'default' in brand else false }}"
+      branding_title: "{{ brand.name if 'name' in brand else omit }}"
+      branding_logo: "{{ brand.logo | default('/static/dist/assets/icons/icon_left_brand.svg', true) }}"
+      branding_favicon: "{{ brand.favicon | default('/static/dist/assets/icons/icon.png', true) }}"
+      branding_default_flow_background: "{{ brand.background | default('/static/dist/assets/images/flow_background.jpg', true) }}"
+      branding_custom_css: "{{ brand.custom_css if 'custom_css' in brand else omit }}"
+      flow_authentication: "{{ flow_authentication_pk }}"
+      flow_invalidation: "{{ flow_invalidadion_pk }}"
+      flow_recovery: "{{ flow_recovery_pk }}"
+      flow_unenrollment: "{{ flow_unenrollment_pk }}"
+      flow_user_settings: "{{ flow_user_settings_pk }}"
+      flow_device_code: "{{ flow_device_code_pk }}"
+      default_application: "{{ brand.default_app | default(none, true) }}"
+      web_certificate: "{{ brand.web_certificate | default(none, true) }}"
+      client_certificates: "{{ brand.client_certificates if 'client_certificates' in brand else omit }}"
+      attributes: "{{ brand.attributes if 'attributes' in brand else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_brand else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  vars:
+    brand_uuid: >-
+      {{
+        authentik_existing_brands.json.results
+        | selectattr('domain', 'equalto', brand.domain)
+        | map(attribute='brand_uuid')
+        | first
+        | default(none)
+      }}
+    new_brand: "{{ brand_uuid is none }}"
+    flow_authentication_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', brand.default_flows_slug.authentication)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    flow_invalidadion_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', brand.default_flows_slug.invalidadion)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    flow_recovery_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', brand.default_flows_slug.recovery)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    flow_unenrollment_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', brand.default_flows_slug.unenrollment)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    flow_user_settings_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', brand.default_flows_slug.user_settings)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    flow_device_code_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', brand.default_flows_slug.device_code)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+  register: authentik_custom_brands
+  changed_when: >-
+    new_brand or
+    (authentik_custom_brands.json
+    !=
+    (authentik_existing_brands.json.results
+    | selectattr('brand_uuid', 'equalto', brand_uuid)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

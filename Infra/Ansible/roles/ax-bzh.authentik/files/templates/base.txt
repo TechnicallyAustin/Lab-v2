@@ -1,0 +1,18 @@
+{# Template de base pour tous les emails du Homelab - Version texte brut      #}
+{# ============================================================================ #}
+{% load i18n %}
+{% load humanize %}
+{% autoescape off %}
+================================================================================
+{% block logo %}HOMELAB{% endblock %}
+================================================================================
+
+{% block content %}{% endblock %}
+
+--------------------------------------------------------------------------------
+{% block footer %}
+{% trans "Cet email a ete envoye automatiquement" %}
+{% trans "Si vous n'etes pas a l'origine de cette action, ignorez ce message." %}
+{% endblock %}
+================================================================================
+{% endautoescape %}

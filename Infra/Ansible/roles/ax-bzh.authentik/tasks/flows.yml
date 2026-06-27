@@ -1,0 +1,98 @@
+---
+- name: Get existing flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flows
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Create / Update flows"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/{{ flow.slug ~ '/' if not new_flow}}"
+    method: "{{ 'POST' if new_flow else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      slug: "{{ flow.slug }}"
+      name: "{{ flow.name if 'name' in flow or new_flow else omit }}"
+      title: "{{ flow.title if 'title' in flow or new_flow else omit }}"
+      designation: "{{ flow.designation if 'designation' in flow or new_flow else omit }}"
+      background: "{{ flow.background if 'background' in flow else omit }}"
+      policy_engine_mode: "{{ flow.policy_engine_mode if 'policy_engine_mode' in flow else omit }}"
+      compatibility_mode: "{{ flow.compatibility_mode if 'compatibility_mode' in flow else omit }}"
+      layout: "{{ flow.layout if 'layout' in flow else omit }}"
+      denied_action: "{{ flow.denied_action if 'denied_action' in flow else omit }}"
+      authentication: "{{ flow.authentication if 'authentication' in flow else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_flow else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_flow
+  vars:
+    flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', flow.slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_flow: "{{ flow_pk is none }}"
+  loop: "{{ _authentik_config.flows.list | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "{{ flow.slug }}"
+    loop_var: flow
+  when:
+    - _authentik_config.flows.list is defined
+    - _authentik_config.flows.list is iterable
+    - _authentik_config.flows.list is not mapping
+    - _authentik_config.flows.list | length > 0
+    - flow.state == 'present'
+  changed_when: >-
+    new_flow or
+    (authentik_custom_flow.json
+    !=
+    (authentik_existing_flows.json.results
+    | selectattr('slug', 'equalto', flow.slug)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Remove other flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/{{ item }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  loop: "{{ flows_to_delete }}"
+  loop_control:
+    label: "{{ authentik_existing_flows.json.results | selectattr('slug', 'equalto', item) | map(attribute='slug') | first }}"
+  vars:
+    flows_to_delete: >-
+      {{
+        (_authentik_config.flows.remove_others | bool) | ternary
+        (
+          authentik_existing_flows.json.results
+            | rejectattr('slug', 'in', _authentik_config.flows.list | selectattr('state', 'equalto', 'present') | map(attribute='slug'))
+            | map(attribute='slug')
+            | list,
+          authentik_existing_flows.json.results
+            | selectattr('slug', 'in', _authentik_config.flows.list | selectattr('state', 'equalto', 'absent') | map(attribute='slug'))
+            | map(attribute='slug')
+            | list
+        )
+      }}
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

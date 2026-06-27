@@ -1,0 +1,43 @@
+# code: language=ansible
+# vim: set filetype=yaml.ansible :
+---
+vaultwarden_docker_version: '1.36.0'
+vaultwarden_docker_container_name: vaultwarden
+vaultwarden_docker_root_folder: "/opt/{{ vaultwarden_docker_container_name }}"
+vaultwarden_docker_root_folder_owner: root
+vaultwarden_docker_root_folder_group: root
+vaultwarden_docker_root_folder_mode: '0750'
+vaultwarden_docker_compose_service_params:
+  restart: unless-stopped
+vaultwarden_docker_compose_environment_params:
+  DOMAIN: https://changeit.com
+vaultwarden_docker_compose_out_of_service_template:
+  volumes:
+    vaultwarden-data: {}
+vaultwarden_docker_compose_ports:
+  - "8080:80"
+vaultwarden_docker_compose_volumes:
+  - vaultwarden-data:/data/
+vaultwarden_docker_compose_template: |
+  services:
+    {{ vaultwarden_docker_container_name }}:
+      image: vaultwarden/server:{{ vaultwarden_docker_version }}
+      container_name: {{ vaultwarden_docker_container_name }}
+  {% for k, v in vaultwarden_docker_compose_service_params.items() %}
+      {{ k }}: {{ v }}
+  {% endfor %}
+      environment:
+  {% for k, v in vaultwarden_docker_compose_environment_params.items() %}
+        {{ k }}: {{ v }}
+  {% endfor %}
+      volumes:
+  {% for volume in vaultwarden_docker_compose_volumes %}
+        - {{ volume }}
+  {% endfor %}
+      ports:
+  {% for port in vaultwarden_docker_compose_ports %}
+        - {{ port }}
+  {% endfor %}
+  {% if vaultwarden_docker_compose_out_of_service_template is not none %}
+  {{ vaultwarden_docker_compose_out_of_service_template | to_nice_yaml(indent=2) }}
+  {% endif %}

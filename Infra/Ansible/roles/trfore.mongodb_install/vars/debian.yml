@@ -1,0 +1,22 @@
+---
+# tarball install variables
+mongodb_path_db: /var/lib/mongodb # Could it broke something? that's value is default for ubuntu24.04
+mongodb_path_log: /var/log/mongodb
+mongodb_dependencies:
+  - libcurl4
+  - openssl
+  - liblzma5
+mongodb_pkg_hold_list:
+  - mongodb-org
+  - mongodb-org-server
+  - mongodb-org-shell
+  - mongodb-org-mongos
+  - mongodb-org-tools
+  - mongodb-org-database
+  - mongodb-mongosh
+  - mongodb-org-database-tools-extra
+  - mongodb-database-tools
+
+python3_packages:
+  - python3-venv
+  - python3-packaging

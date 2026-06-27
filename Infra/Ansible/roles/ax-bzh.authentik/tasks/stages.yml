@@ -1,0 +1,51 @@
+---
+- name: Include stage specific tasks
+  ansible.builtin.include_tasks: "stages/{{ stage.type }}.yml"
+  loop: "{{ _authentik_config.stages.list | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "{{ stage.name }}"
+    loop_var: stage
+
+- name: Get existing stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Remove other stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/{{ item }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  loop: "{{ stages_to_delete }}"
+  loop_control:
+    label: "{{ authentik_existing_stages.json.results | selectattr('pk', 'equalto', item) | map(attribute='name') | first }}"
+  vars:
+    stages_to_delete: >-
+      {{
+        (_authentik_config.stages.remove_others | bool) | ternary
+        (
+          authentik_existing_stages.json.results
+            | rejectattr('name', 'in', _authentik_config.stages.list | selectattr('state', 'equalto', 'present') | map(attribute='name'))
+            | map(attribute='pk')
+            | list,
+          authentik_existing_stages.json.results
+            | selectattr('name', 'in', _authentik_config.stages.list | selectattr('state', 'equalto', 'absent') | map(attribute='name'))
+            | map(attribute='pk')
+            | list
+        )
+      }}
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
