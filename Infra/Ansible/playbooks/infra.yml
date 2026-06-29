@@ -1,0 +1,8 @@
+---
+- name: Core Infrastructure
+  hosts: infrastructure
+  become: true
+  roles:
+    - role: authentik
+    - role: vaultwarden
+    - role: watchdog

@@ -1,8 +1,6 @@
 ---
-- name: configure all
-  hosts: all
-  become: true
-
-  roles:
-    - common
-
+- import_playbook: baseline.yml
+- import_playbook: network.yml
+- import_playbook: infra.yml
+- import_playbook: data.yml
+- import_playbook: k3s.yml

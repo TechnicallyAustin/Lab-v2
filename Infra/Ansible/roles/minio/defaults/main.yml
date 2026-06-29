@@ -1,3 +1,16 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# defaults file for minio
+# MinIO runs as a Docker container on the G9 data VM.
+# It serves as the S3-compatible object store for Nextcloud file storage
+# and as a backup destination target.
+
+minio_image: "quay.io/minio/minio"
+minio_version: "latest"               # pin once stable
+minio_api_port: 9000                  # S3 API — Nextcloud and mc clients use this
+minio_console_port: 9001              # Web UI
+minio_data_dir: /opt/minio/data       # object storage on host
+minio_container_name: minio
+minio_restart_policy: unless-stopped
+
+# Credentials — override these in vault
+minio_root_user: "minioadmin"
+minio_root_password: "changeme"       # set via vault_minio_root_password in practice

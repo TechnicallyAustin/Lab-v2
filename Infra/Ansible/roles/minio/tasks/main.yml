@@ -1,3 +1,42 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for minio
+- name: Create Data Directory - minio
+  ansible.builtin.file:
+    src: "{{ minio_data_dir }}"
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+
+- name: Pull the Docker Image - minio
+  community.docker.docker_image:
+    name: "{{ minio_image }}:{{ minio_version }}"
+    src: pull
+
+# Two ports: 9000 is the S3 API (what Nextcloud connects to),
+# 9001 is the web console so you can browse buckets in a browser.
+# Credentials come from env vars — MinIO reads MINIO_ROOT_USER and
+# MINIO_ROOT_PASSWORD at startup to set the admin account.
+- name: Run MinIO container
+  community.docker.docker_container:
+    name: "{{ minio_container_name }}"
+    image: "{{ minio_image }}:{{ minio_version }}"
+    state: started
+    restart_policy: "{{ minio_restart_policy }}"
+    command: server /data --console-address ":9001"
+    published_ports:
+      - "{{ minio_api_port }}:9000"
+      - "{{ minio_console_port }}:9001"
+    volumes:
+      - "{{ minio_data_dir }}:/data"
+    env:
+      MINIO_ROOT_USER: "{{ minio_root_user }}"
+      MINIO_ROOT_PASSWORD: "{{ minio_root_password }}"
+
+- name: Verify the container is running - minio
+  community.docker.docker_container_info:
+    name: "{{ minio_container_name }}"
+  register: minio_info
+
+- name: Show Container Status - minio
+  ansible.builtin.debug:
+    msg: "minio is running : {{ minio_info.container.State.Running}}"

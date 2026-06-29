@@ -1,0 +1,10 @@
+---
+- name: Kuberentes Compute platform
+  hosts: k3s
+  become: true
+  vars:
+    k3s_release_version: "v1.32.0+k3s1"
+    k3s_server_additional_manifests_dir: "files/manifests"
+    k3s_become: true
+  roles:
+    - role: k3s
