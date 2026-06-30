@@ -1,0 +1,33 @@
+- name: Create local backup staging directory
+  ansible.builtin.file:
+    path: "{{ backup_local_dir }}"
+    state: directory
+    mode: "0700"                  # root only — backups contain credentials
+    owner: root
+    group: root
+
+- name: Install MinIO client (mc)
+  ansible.builtin.get_url:
+    url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
+    dest: /usr/local/bin/mc
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Deploy backup script from template
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: /usr/local/bin/lab-backup.sh
+    mode: "0700"                  # root only — contains plaintext credentials
+    owner: root
+    group: root
+  notify: reload cron
+
+- name: Register nightly backup cron job
+  ansible.builtin.cron:
+    name: "platform nightly backup"
+    hour: "{{ backup_cron_hour }}"
+    minute: "{{ backup_cron_minute }}"
+    user: "{{ backup_cron_user }}"
+    job: "/usr/local/bin/lab-backup.sh >> {{ backup_local_dir }}/cron.log 2>&1"
+    state: present

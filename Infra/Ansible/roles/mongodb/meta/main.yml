@@ -1,0 +1,21 @@
+galaxy_info:
+  role_name: mongodb_install
+  namespace: trfore
+  author: Taylor Fore
+  description: Install MongoDB Community Edition on RedHat/CentOS and Debian/Ubuntu.
+
+  license: MIT
+
+  min_ansible_version: "2.16"
+
+  platforms:
+    - name: Debian
+      versions: [buster, bullseye, bookworm]
+    - name: EL
+      versions: ["8", "9"]
+    - name: Ubuntu
+      versions: [focal, jammy, noble]
+
+  galaxy_tags: [database, mongo, mongodb]
+
+dependencies: []

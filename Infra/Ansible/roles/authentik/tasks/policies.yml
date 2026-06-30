@@ -1,0 +1,7 @@
+---
+- name: Include policies specific tasks
+  ansible.builtin.include_tasks: "policies/{{ policy.type }}.yml"
+  loop: "{{ _authentik_config.policies.list | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "{{ policy.name }}"
+    loop_var: policy

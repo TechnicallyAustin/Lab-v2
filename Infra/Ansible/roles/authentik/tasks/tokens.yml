@@ -1,0 +1,125 @@
+---
+- name: Get existing tokens
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/tokens/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_tokens
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing users
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/users/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_users
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "{{ ('Create' if new_token else 'Update') ~ ' token: ' ~ token.identifier }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/tokens/{{ token.identifier ~ '/' if not new_token}}"
+    method: "{{ 'POST' if new_token else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      identifier: "{{ token.identifier }}"
+      intent: "{{ token.intent if 'intent' in token else omit }}"
+      user: "{{ user_pk if (('username' in token) and new_token) else omit }}"
+      description: "{{ token.description if 'description' in token else omit }}"
+      expires: "{{ token.expires if 'expires' in token else omit }}"
+      expiring: "{{ token.expiring if 'expiring' in token else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_token else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_token
+  vars:
+    new_token: >-
+      {{
+        token.identifier not in
+        authentik_existing_tokens.json.results | map(attribute='identifier')
+      }}
+    user_pk: >-
+      {{
+        authentik_existing_users.json.results
+        | selectattr('username', 'equalto', token.username)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+  changed_when: >-
+    new_token or
+    ((authentik_custom_token.json
+    | dict2items
+    | rejectattr('key', 'in', ['user_obj'] + (['expires'] if not token.expiring | default(false) else []))
+    | items2dict)
+    !=
+    (authentik_existing_tokens.json.results
+    | selectattr('identifier', 'equalto', token.identifier)
+    | first
+    | default({})
+    | dict2items
+    | rejectattr('key', 'in', ['user_obj'] + (['expires'] if not token.expiring | default(false) else []))
+    | items2dict)
+    )
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: API token checks
+  when:
+    - token.intent is defined
+    - token.intent == 'api'
+  block:
+    - name: Get token
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/tokens/{{ token.identifier }}/view_key/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_api_token
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Check if token is working
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/users/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_api_token.json.key }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Use the token as new default token for API access
+      ansible.builtin.set_fact:
+        authentik_token: "{{ authentik_api_token.json.key }}"
+      when: token.use_as_new_api_token | default(false)
+
+    - name: Execute post-token callback
+      ansible.builtin.include_tasks:
+        file: "{{ authentik_token_callback_tasks }}"
+      vars:
+        secret_path: "/applications/authentik/"
+        secret_name: "API_TOKEN"
+        secret_value: "{{ authentik_api_token.json.key }}"
+        environment_slug: "prod"
+      when:
+        - token.use_as_new_api_token | default(false)
+        - authentik_token_callback_tasks is defined
+        - authentik_token is defined

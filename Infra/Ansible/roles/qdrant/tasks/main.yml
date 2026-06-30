@@ -1,0 +1,36 @@
+---
+- name: Create Data Directory - qdrant
+  ansible.builtin.file:
+    src: "{{ qdrant_data_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Pull the Docker Image - qdrant
+  community.docker.docker_image:
+    name: "{{ qdrant_image }}:{{ qdrant_version }}"
+    src: pull
+
+- name: Run the Docker Container - qdrant
+  community.docker.docker_container:
+    name: "{{ qdrant_container_name }}"
+    image: "{{ qdrant_image }}:{{ qdrant_version }}"
+    state: started
+    restart_policy: "{{ qdrant_restart_policy }}"
+    published_ports:
+      - "{{ qdrant_http_port }}:6333"
+      - "{{ qdrant_grpc_port }}:6334"
+    volumes:
+      - "{{ qdrant_data_dir }}://qdrant/storage"
+    env:
+      IS_PERSISTENT: "TRUE"
+
+- name: Verify the container is running - qdrant
+  community.docker.docker_container_info:
+    name: "{{ qdrant_container_name }}"
+  register: qdrant_info
+
+- name: Show Container Status - qdrant
+  ansible.builtin.debug:
+    msg: "qdrant is running : {{ qdrant_info.container.State.Running}}"

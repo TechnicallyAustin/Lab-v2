@@ -1,0 +1,99 @@
+---
+- name: Get existing prompts
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/prompt/prompts/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_prompts
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Create / Update prompts"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/prompt/prompts/{{ prompt_pk ~ '/' if not new_prompt}}"
+    method: "{{ 'POST' if new_prompt else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ prompt.name if 'name' in prompt or new_prompt else omit }}"
+      field_key: "{{ prompt.field_key if 'field_key' in prompt or new_prompt else omit }}"
+      label: "{{ prompt.label if 'label' in prompt or new_prompt else omit }}"
+      type: "{{ prompt.type if 'type' in prompt or new_prompt else omit }}"
+      required: "{{ prompt.required if 'required' in prompt else omit }}"
+      placeholder: "{{ prompt.placeholder if 'placeholder' in prompt else omit }}"
+      initial_value: "{{ prompt.initial_value if 'initial_value' in prompt else omit }}"
+      order: "{{ prompt.order if 'order' in prompt else omit }}"
+      sub_text: "{{ prompt.sub_text if 'sub_text' in prompt else omit }}"
+      placeholder_expression: "{{ prompt.placeholder_expression if 'placeholder_expression' in prompt else omit }}"
+      initial_value_expression: "{{ prompt.initial_value_expression if 'initial_value_expression' in prompt else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_prompt else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_prompt
+  vars:
+    prompt_pk: >-
+      {{
+        authentik_existing_prompts.json.results
+        | selectattr('name', 'equalto', prompt.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_prompt: "{{ prompt_pk is none }}"
+  loop: "{{ _authentik_config.prompts.list | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "{{ prompt.name }}"
+    loop_var: prompt
+  when:
+    - _authentik_config.prompts.list is defined
+    - _authentik_config.prompts.list is iterable
+    - _authentik_config.prompts.list is not mapping
+    - _authentik_config.prompts.list | length > 0
+    - prompt.state == 'present'
+  changed_when: >-
+    new_prompt or
+    (authentik_custom_prompt.json
+    !=
+    (authentik_existing_prompts.json.results
+    | selectattr('name', 'equalto', prompt.name)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Remove other prompts
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/prompt/prompts/{{ item }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  loop: "{{ prompts_to_delete }}"
+  loop_control:
+    label: "{{ authentik_existing_prompts.json.results | selectattr('name', 'equalto', item) | map(attribute='name') | first }}"
+  vars:
+    prompts_to_delete: >-
+      {{
+        (_authentik_config.prompts.remove_others | bool) | ternary
+        (
+          authentik_existing_prompts.json.results
+            | rejectattr('name', 'in', _authentik_config.prompts.list | selectattr('state', 'equalto', 'present') | map(attribute='name'))
+            | map(attribute='pk')
+            | list,
+          authentik_existing_prompts.json.results
+            | selectattr('name', 'in', _authentik_config.prompts.list | selectattr('state', 'equalto', 'absent') | map(attribute='name'))
+            | map(attribute='pk')
+            | list
+        )
+      }}
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

@@ -1,0 +1,22 @@
+---
+# file: clickhouse/tasks/configuration.yml
+
+- name: Ensure ClickHouse directories
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+    state: directory
+  with_items:
+    - "{{ clickhouse_directories }}"
+
+- name: Manage ClickHouse configuration
+  template: 
+    src: config.xml.j2
+    dest: "{{ clickhouse_server_config_path }}/config.xml"
+    owner: "{{ clickhouse_system_user }}"
+    group: "{{ clickhouse_system_group }}"
+    mode: 0644
+  notify:
+    - Restart ClickHouse

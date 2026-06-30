@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: vaultwarden_docker
+  author: foi
+  description: vaultwarden docker ansible role
+  platforms:
+    - name: Fedora
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+
+  license: MIT
+
+  min_ansible_version: "2.16"
+
+  galaxy_tags:
+    - passswords
+    - vault
+    - vaultwarden
+
+dependencies: []

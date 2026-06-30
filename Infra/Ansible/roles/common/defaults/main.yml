@@ -1,5 +1,5 @@
 ---
-timezone: America/Phoenix
+common_timezone: America/Phoenix
 
 common_packages:
   - curl

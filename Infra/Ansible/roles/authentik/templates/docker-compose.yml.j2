@@ -1,0 +1,240 @@
+{{ ansible_managed | comment }}
+
+services:
+  postgresql:
+    image: "{{ authentik_postgres_image }}"
+    container_name: "{{ authentik_postgres_container_name }}"
+    restart: {{ authentik_postgres_restart_policy }}
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN         # Make arbitrary changes to file UIDs and GIDs.
+      - SETUID        # Make arbitrary manipulations of process UIDs.
+      - SETGID        # Make arbitrary manipulations of process GIDs and supplementary GID list.
+      - DAC_OVERRIDE  # Bypass file read, write, and execute permission checks.
+      - FOWNER        # Bypass permission checks on operations that normally require the file system UID of the process to match the UID of the file.
+    security_opt:
+      - no-new-privileges:true
+    networks:
+{{ authentik_postgres_networks | to_nice_yaml | indent(6, first=true) }}
+    volumes:
+      - {{ authentik_volume_prefix }}-postgres:/var/lib/postgresql/data
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run/postgresql
+    environment:
+      POSTGRES_DB: "{{ authentik_postgres_db }}"
+      POSTGRES_USER: "{{ authentik_postgres_user }}"
+      POSTGRES_PASSWORD: "{{ authentik_postgres_password }}"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -d {{ authentik_postgres_db }} -U {{ authentik_postgres_user }}
+      interval: {{ authentik_postgres_healthcheck_interval }}
+      timeout: {{ authentik_postgres_healthcheck_timeout }}
+      retries: {{ authentik_postgres_healthcheck_retries }}
+      start_period: {{ authentik_postgres_healthcheck_start_period }}
+    deploy:
+      resources:
+        limits:
+          memory: {{ authentik_postgres_memory_limit }}
+          cpus: {{ authentik_postgres_cpu_limit }}
+
+  server:
+    image: "{{ authentik_server_image }}"
+    container_name: "{{ authentik_server_container_name }}"
+    restart: {{ authentik_server_restart_policy }}
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    command: server
+    networks:
+{{ authentik_server_networks | to_nice_yaml | indent(6, first=true) }}
+    expose:
+      - {{ authentik_http_port }}
+      - {{ authentik_https_port }}
+    volumes:
+      - {{ authentik_volume_prefix }}-media:/data/media
+      - {{ authentik_volume_prefix }}-templates:/templates
+    # read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      AUTHENTIK_SECRET_KEY: {{ authentik_secret_key }}
+      AUTHENTIK_ERROR_REPORTING__ENABLED: {{ authentik_error_reporting_enabled }}
+      AUTHENTIK_LOG_LEVEL: {{ authentik_log_level }}
+      AUTHENTIK_LISTEN__HTTP: 0.0.0.0:{{ authentik_http_port }}
+      AUTHENTIK_LISTEN__HTTPS: 0.0.0.0:{{ authentik_https_port }}
+      AUTHENTIK_LISTEN__METRICS: 0.0.0.0:{{ authentik_metrics_port }}
+      AUTHENTIK_COOKIE_DOMAIN: {{ authentik_cookie_domain }}
+      AUTHENTIK_POSTGRESQL__HOST: "{{ authentik_postgres_container_name }}"
+      AUTHENTIK_POSTGRESQL__NAME: "{{ authentik_postgres_db }}"
+      AUTHENTIK_POSTGRESQL__USER: "{{ authentik_postgres_user }}"
+      AUTHENTIK_POSTGRESQL__PASSWORD: "{{ authentik_postgres_password }}"
+{% if authentik_email_enabled %}
+      AUTHENTIK_EMAIL__HOST: "{{ authentik_email_host }}"
+      AUTHENTIK_EMAIL__PORT: {{ authentik_email_port }}
+      AUTHENTIK_EMAIL__USERNAME: "{{ authentik_email_username }}"
+      AUTHENTIK_EMAIL__PASSWORD: "{{ authentik_email_password }}"
+      AUTHENTIK_EMAIL__USE_TLS: {{ authentik_email_use_tls | lower }}
+      AUTHENTIK_EMAIL__USE_SSL: {{ authentik_email_use_ssl | lower }}
+      AUTHENTIK_EMAIL__FROM: "{{ authentik_email_from }}"
+{% endif %}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ak healthcheck
+      interval: {{ authentik_server_healthcheck_interval }}
+      timeout: {{ authentik_server_healthcheck_timeout }}
+      retries: {{ authentik_server_healthcheck_retries }}
+      start_period: {{ authentik_server_healthcheck_start_period }}
+    deploy:
+      resources:
+        limits:
+          memory: {{ authentik_server_memory_limit }}
+          cpus: {{ authentik_server_cpu_limit }}
+
+  worker:
+    image: "{{ authentik_worker_image }}"
+    container_name: "{{ authentik_worker_container_name }}"
+    restart: {{ authentik_worker_restart_policy }}
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command: worker
+    networks:
+{{ authentik_worker_networks | to_nice_yaml | indent(6, first=true) }}
+    volumes:
+      - {{ authentik_volume_prefix }}-media:/data/media
+      - {{ authentik_volume_prefix }}-templates:/templates
+      - {{ authentik_volume_prefix }}-certs:/certs
+    # read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      AUTHENTIK_SECRET_KEY: "{{ authentik_secret_key }}"
+      AUTHENTIK_LOG_LEVEL: {{ authentik_log_level }}
+      AUTHENTIK_POSTGRESQL__HOST: "{{ authentik_postgres_container_name }}"
+      AUTHENTIK_POSTGRESQL__NAME: "{{ authentik_postgres_db }}"
+      AUTHENTIK_POSTGRESQL__USER: "{{ authentik_postgres_user }}"
+      AUTHENTIK_POSTGRESQL__PASSWORD: "{{ authentik_postgres_password }}"
+{% if authentik_bootstrap_enabled %}
+      AUTHENTIK_BOOTSTRAP_PASSWORD: "{{ authentik_bootstrap_password }}"
+      AUTHENTIK_BOOTSTRAP_TOKEN: "{{ authentik_bootstrap_token }}"
+      AUTHENTIK_BOOTSTRAP_EMAIL: "{{ authentik_bootstrap_email }}" # Add ""
+{% endif %}
+{% if authentik_email_enabled %}
+      AUTHENTIK_EMAIL__HOST: "{{ authentik_email_host }}"
+      AUTHENTIK_EMAIL__PORT: {{ authentik_email_port }}
+      AUTHENTIK_EMAIL__USERNAME: "{{ authentik_email_username }}"
+      AUTHENTIK_EMAIL__PASSWORD: "{{ authentik_email_password }}"
+      AUTHENTIK_EMAIL__USE_TLS: {{ authentik_email_use_tls | lower }}
+      AUTHENTIK_EMAIL__USE_SSL: {{ authentik_email_use_ssl | lower }}
+      AUTHENTIK_EMAIL__FROM: "{{ authentik_email_from }}"
+{% endif %}
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - ak healthcheck
+      interval: {{ authentik_worker_healthcheck_interval }}
+      timeout: {{ authentik_worker_healthcheck_timeout }}
+      retries: {{ authentik_worker_healthcheck_retries }}
+      start_period: {{ authentik_worker_healthcheck_start_period }}
+    deploy:
+      resources:
+        limits:
+          memory: {{ authentik_worker_memory_limit }}
+          cpus: {{ authentik_worker_cpu_limit }}
+      replicas: {{ authentik_worker_replicas }}
+
+{# networks:
+{% if authentik_external_network_info.exists %}
+  {{ authentik_external_network }}:
+    external: true
+{% endif %}
+  {{ authentik_internal_network }}:
+    name: {{ authentik_internal_network }}
+    driver: bridge
+    internal: true #}
+networks:
+{% for network in authentik_managed_networks | default([]) %}
+  {{ network.name }}:
+{{ network | to_nice_yaml | indent(4, first=true) }}
+{% endfor %}
+{% for result in authentik_external_networks_info.results | default([]) %}
+{% if result.exists %}
+  {{ result.item.name }}:
+    name: {{ result.item.name }}
+    external: true
+{% endif %}
+{% endfor %}
+
+volumes:
+  {{ authentik_volume_prefix }}-postgres:
+    name: "{{ authentik_volume_prefix }}-postgres"
+    driver: local
+{% if authentik_volume_labels is defined
+and authentik_volume_labels is not mapping
+and authentik_volume_labels is iterable
+and authentik_volume_labels is not string
+and authentik_volume_labels | length > 0 %}
+    labels:
+{% for label in authentik_volume_labels %}
+      - {{ label }}
+{% endfor %}
+{% endif %}
+
+  {{ authentik_volume_prefix }}-media:
+    name: "{{ authentik_volume_prefix }}-media"
+    driver: local
+{% if authentik_volume_labels is defined
+and authentik_volume_labels is not mapping
+and authentik_volume_labels is iterable
+and authentik_volume_labels is not string
+and authentik_volume_labels | length > 0 %}
+    labels:
+{% for label in authentik_volume_labels %}
+      - {{ label }}
+{% endfor %}
+{% endif %}
+
+  {{ authentik_volume_prefix }}-certs:
+    name: "{{ authentik_volume_prefix }}-certs"
+    driver: local
+{% if authentik_volume_labels is defined
+and authentik_volume_labels is not mapping
+and authentik_volume_labels is iterable
+and authentik_volume_labels is not string
+and authentik_volume_labels | length > 0 %}
+    labels:
+{% for label in authentik_volume_labels %}
+      - {{ label }}
+{% endfor %}
+{% endif %}
+
+  {{ authentik_volume_prefix }}-templates:
+    name: "{{ authentik_volume_prefix }}-templates"
+    driver: local
+{% if authentik_volume_labels is defined
+and authentik_volume_labels is not mapping
+and authentik_volume_labels is iterable
+and authentik_volume_labels is not string
+and authentik_volume_labels | length > 0 %}
+    labels:
+{% for label in authentik_volume_labels %}
+      - {{ label }}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,153 @@
+---
+- name: Get existing invitations
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/invitation/invitations/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_invitations
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flows
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Create / Update invitations"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/invitation/invitations/{{ invitation_pk ~ '/' if not new_invitation}}"
+    method: "{{ 'POST' if new_invitation else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ invitation.name if 'name' in invitation or new_invitation else omit }}"
+      expires: "{{ invitation.expires if 'expires' in invitation or new_invitation else omit }}"
+      single_use: "{{ invitation.single_use if 'single_use' in invitation else omit }}"
+      flow: "{{ flow_pk if 'flow_slug' in invitation else omit }}"
+      fixed_data: "{{ invitation.fixed_data if 'fixed_data' in invitation else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_invitation else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_invitation
+  vars:
+    invitation_pk: >-
+      {{
+        authentik_existing_invitations.json.results
+        | selectattr('name', 'equalto', invitation.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_invitation: "{{ invitation_pk is none }}"
+    flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', invitation.flow_slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+  loop: "{{ _authentik_config.invitations.list | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "{{ invitation.name }}"
+    loop_var: invitation
+  when:
+    - _authentik_config.invitations.list is defined
+    - _authentik_config.invitations.list is iterable
+    - _authentik_config.invitations.list is not mapping
+    - _authentik_config.invitations.list | length > 0
+    - invitation.state == 'present'
+  changed_when: >-
+    new_invitation or
+    (authentik_custom_invitation.json
+    !=
+    (authentik_existing_invitations.json.results
+    | selectattr('name', 'equalto', invitation.name)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Debug
+  ansible.builtin.debug:
+    msg: |-
+      authentik_existing_invitations :
+      {{ authentik_existing_invitations }}
+
+      authentik_custom_invitation :
+      {{ authentik_custom_invitation }}
+
+      authentik_existing_flows :
+      {{ authentik_existing_flows }}
+
+      flow_pk :
+      {{ flow_pk }}
+  vars:
+    flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', 'axbzh-fr-enrollment-flow')
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    invitations_to_delete: >-
+      {{
+        (_authentik_config.invitations.remove_others | bool) | ternary
+        (
+          authentik_existing_invitations.json.results
+            | rejectattr('name', 'in', _authentik_config.invitations.list | selectattr('state', 'equalto', 'present') | map(attribute='name'))
+            | map(attribute='pk')
+            | list,
+          authentik_existing_invitations.json.results
+            | selectattr('name', 'in', _authentik_config.invitations.list | selectattr('state', 'equalto', 'absent') | map(attribute='name'))
+            | map(attribute='pk')
+            | list
+        )
+      }}
+
+
+- name: Remove other invitations
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/invitation/invitations/{{ item }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  loop: "{{ invitations_to_delete }}"
+  loop_control:
+    label: "{{ authentik_existing_invitations.json.results | selectattr('name', 'equalto', item) | map(attribute='name') }}"
+  vars:
+    invitations_to_delete: >-
+      {{
+        (_authentik_config.invitations.remove_others | bool) | ternary
+        (
+          authentik_existing_invitations.json.results
+            | rejectattr('name', 'in', _authentik_config.invitations.list | selectattr('state', 'equalto', 'present') | map(attribute='name'))
+            | map(attribute='pk')
+            | list,
+          authentik_existing_invitations.json.results
+            | selectattr('name', 'in', _authentik_config.invitations.list | selectattr('state', 'equalto', 'absent') | map(attribute='name'))
+            | map(attribute='pk')
+            | list
+        )
+      }}
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

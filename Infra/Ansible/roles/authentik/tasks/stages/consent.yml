@@ -1,0 +1,63 @@
+---
+- name: Get existing stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing consent stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/consent/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_consent_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "{{ ('Create' if new_stage else 'Update') ~ ' stage: ' ~ stage.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/consent/{{ stage_pk ~ '/' if not new_stage}}"
+    method: "{{ 'POST' if new_stage else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ stage.name }}"
+      mode: "{{ stage.mode if 'mode' in stage else omit }}"
+      consent_expire_in: "{{ stage.consent_expire_in if 'consent_expire_in' in stage else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_stage else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_stage
+  vars:
+    stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_stage: "{{ stage_pk is none }}"
+  changed_when: >-
+    new_stage or
+    (authentik_custom_stage.json
+    !=
+    (authentik_existing_consent_stages.json.results
+    | selectattr('pk', 'equalto', stage_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

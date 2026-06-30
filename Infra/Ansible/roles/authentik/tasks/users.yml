@@ -1,0 +1,100 @@
+---
+- name: Get existing users
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/users/"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_users
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing groups
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/groups/"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_groups
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "{{ ('Create' if new_user else 'Update') ~ ' user: ' ~ user.username }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/users/{{ user_pk ~ '/' if not new_user}}"
+    method: "{{ 'POST' if new_user else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      username: "{{ user.username }}"
+      name: "{{ user.name | default(omit, true) }}"
+      is_active: "{{ user.is_active | default(omit, true) }}"
+      email: "{{ user.email | default(omit, true) }}"
+      path: "users{{ none if user.subpath is undefined else '/' ~ user.subpath | default(omit, true) }}"
+      type: "{{ user.type | default(omit, true) }}"
+      groups: "{{ groups_pk if 'groups' in user else omit }}"
+      attributes: "{{ user.attributes if 'attributes' in user else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_user else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_user
+  vars:
+    user_pk: >-
+      {{
+        authentik_existing_users.json.results
+        | selectattr('username', 'equalto', user.username)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_user: "{{ user_pk is none }}"
+    groups_pk: >-
+      {{
+        authentik_existing_groups.json.results
+        | selectattr('name', 'in', user.groups | default([]))
+        | map(attribute='pk')
+        | default(none)
+      }}
+  changed_when: >-
+    new_user or
+    ((authentik_custom_user.json
+    | dict2items
+    | rejectattr('key', 'in', ['last_updated', 'last_login'])
+    | items2dict)
+    !=
+    (authentik_existing_users.json.results
+    | selectattr('pk', 'equalto', user_pk)
+    | first
+    | default({})
+    | dict2items
+    | rejectattr('key', 'in', ['last_updated', 'last_login'])
+    | items2dict))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Set password for user : {{ user.username }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/core/users/{{ authentik_custom_user.json.pk }}/set_password/"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      password: "{{ user.password }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  when:
+    - user.password is defined
+    - user.password | length > 0
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

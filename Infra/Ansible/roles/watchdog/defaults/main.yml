@@ -1,0 +1,7 @@
+---
+uptime_kuma_image: "louislam/uptime-kuma"
+uptime_kuma_version: "1"
+uptime_kuma_port: 3001
+uptime_kuma_data_dir: /opt/uptime-kuma/data
+uptime_kuma_container_name: uptime-kuma
+uptime_kuma_restart_policy: unless-stopped

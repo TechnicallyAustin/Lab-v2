@@ -1,0 +1,108 @@
+---
+- name: Check if Authentik is licenced
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/enterprise/license/summary/"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_licence_summary
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Show message when Authentik is not licenced
+  when: authentik_licence_summary.json.status != 'valid'
+  ansible.builtin.debug:
+    msg: |-
+      Authentik is not licenced !
+      The stage {{ stage.name }} will be skipped
+    verbosity: 1
+
+- name: Create or update stage if Authentik is licenced
+  when: authentik_licence_summary.json.status == 'valid' or authentik_licence_summary.json.status == 'expiry_soon'
+  block:
+    - name: Get existing stages
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_existing_stages
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Get existing sources
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/sources/all/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_existing_sources
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Get existing source stages
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/stages/source/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_existing_source_stages
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: "{{ ('Create' if new_stage else 'Update') ~ ' stage: ' ~ stage.name }}"
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/stages/source/{{ stage_pk ~ '/' if not new_stage}}"
+        method: "{{ 'POST' if new_stage else 'PATCH' }}"
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ stage.name }}"
+          source: "{{ source_pk if 'source_name' in stage or new_stage else omit }}"
+          resume_timeout: "{{ stage.resume_timeout if 'resume_timeout' in stage else omit }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: ["{{ 201 if new_stage else 200 }}"]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_custom_stage
+      vars:
+        stage_pk: >-
+          {{
+            authentik_existing_stages.json.results
+            | selectattr('name', 'equalto', stage.name)
+            | map(attribute='pk')
+            | first
+            | default(none)
+          }}
+        new_stage: "{{ stage_pk is none }}"
+        source_pk: >-
+          {{
+            authentik_existing_sources.json.results
+            | selectattr('name', 'equalto', stage.source_name)
+            | map(attribute='pk')
+            | first
+            | default(none)
+          }}
+      changed_when: >-
+        new_stage or
+        (authentik_custom_stage.json
+        !=
+        (authentik_existing_source_stages.json.results
+        | selectattr('pk', 'equalto', stage_pk)
+        | first
+        | default({})))
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"

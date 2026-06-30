@@ -1,0 +1,184 @@
+---
+- name: Get existing roles
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/roles/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_roles
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Create role :\"{{ role.name }}\""
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/roles/"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ role.name }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [201]
+    timeout: "{{ authentik_api_call_timeout }}"
+  vars:
+    role_pk: >-
+      {{
+        authentik_existing_roles.json.results
+        | selectattr('name', 'equalto', role.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    is_new_role: "{{ role_pk is none }}"
+  register: authentik_new_role
+  when:
+    - is_new_role
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Get permissions of role :\"{{ role.name }}\" "
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/permissions/?page_size=10000&role={{ role_pk }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  vars:
+    role_pk: >-
+      {{
+        authentik_existing_roles.json.results
+        | selectattr('name', 'equalto', role.name)
+        | map(attribute='pk')
+        | first
+        | default(authentik_new_role.json.pk)
+      }}
+  register: authentik_existing_role_permissions
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get all possible permissions
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/permissions/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_all_possible_permissions
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Assert that defined permissions match allowed values
+  ansible.builtin.assert:
+    that:
+      - role.permissions | difference(possible_values) | length == 0
+    fail_msg: |-
+      Invalid values found:
+      {{ role.permissions | difference(possible_values) | to_nice_yaml }}
+
+      Possible values:
+      {{ possible_values | sort | to_nice_yaml }}
+    quiet: true
+  vars:
+    possible_values: >-
+      {{
+        authentik_all_possible_permissions.json.results
+        | map(attribute='app_label')
+        | zip(authentik_all_possible_permissions.json.results
+          | map(attribute='codename'))
+        | map('join', '.')
+      }}
+  when:
+    - role.permissions is defined
+    - role.permissions is iterable
+    - role.permissions is not mapping
+    - role.permissions | length > 0
+
+- name: "Assign permission on role: \"{{ role.name }}\""
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/permissions/assigned_by_roles/{{ role_pk }}/assign/"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      permissions: "{{ role.permissions | difference(existing_permissions) }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  vars:
+    role_pk: >-
+      {{
+        authentik_existing_roles.json.results
+        | selectattr('name', 'equalto', role.name)
+        | map(attribute='pk')
+        | first
+        | default(authentik_new_role.json.pk)
+      }}
+    existing_permissions: >-
+      {{
+        authentik_existing_role_permissions.json.results
+        | map(attribute='app_label')
+        | zip(authentik_existing_role_permissions.json.results
+        | map(attribute='codename'))
+        | map('join', '.')
+      }}
+  when:
+    - role.permissions is defined
+    - role.permissions is iterable
+    - role.permissions is not mapping
+    - role.permissions | length > 0
+  changed_when: >-
+    role.permissions | difference(existing_permissions) | length > 0
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Unassign permission on role: \"{{ role.name }}\""
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/rbac/permissions/assigned_by_roles/{{ role_pk }}/unassign/"
+    method: PATCH
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      permissions: "{{ existing_permissions | difference(role.permissions) }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  vars:
+    role_pk: >-
+      {{
+        authentik_existing_roles.json.results
+        | selectattr('name', 'equalto', role.name)
+        | map(attribute='pk')
+        | first
+        | default(authentik_new_role.json.pk)
+      }}
+    existing_permissions: >-
+      {{
+        authentik_existing_role_permissions.json.results
+        | map(attribute='app_label')
+        | zip(authentik_existing_role_permissions.json.results
+        | map(attribute='codename'))
+        | map('join', '.')
+      }}
+  when:
+    - role.permissions is defined
+    - role.permissions is iterable
+    - role.permissions is not mapping
+    - role.permissions | length > 0
+  changed_when: >-
+    existing_permissions | difference(role.permissions) | length > 0
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

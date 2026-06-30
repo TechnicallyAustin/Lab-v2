@@ -1,0 +1,98 @@
+---
+- name: Get existing policy bindings
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/bindings/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_policy_bindings
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: >-
+    {{ ('Create' if new_policy_binding else 'Update') ~ ' policy binding. '
+    ~ '- Policy : ' ~ policy_binding.policy_name
+    ~ ' > '
+    ~ ('Stage : ' ~ stage_binding.stage_name if target_type == 'stage' else 'Flow : ' ~ flow_binding.flow_slug if target_type == 'flow') }}
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/bindings/{{ policy_binding_pk ~ '/' if not new_policy_binding}}"
+    method: "{{ 'POST' if new_policy_binding else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      policy: "{{ policy_pk if 'policy_name' in policy_binding or new_policy_binding else omit }}"
+      group: "{{ group_pk if 'group_name' in policy_binding or new_policy_binding else omit }}"
+      user: "{{ user_pk if 'username' in policy_binding or new_policy_binding else omit }}"
+      target: "{{ policy_target }}"
+      negate: "{{ policy_binding.negate if 'negate' in policy_binding else omit }}"
+      enabled: "{{ policy_binding.enabled if 'enabled' in policy_binding else omit }}"
+      order: "{{ policy_binding.order if 'order' in policy_binding or new_policy_binding else omit }}"
+      timeout: "{{ policy_binding.timeout if 'timeout' in policy_binding else omit }}"
+      failure_result: "{{ policy_binding.failure_result if 'failure_result' in policy_binding else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_policy_binding else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_policy_binding
+  vars:
+    policy_pk: >-
+      {{
+        authentik_existing_policies.json.results
+        | selectattr('name', 'equalto', policy_binding.policy_name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    group_pk: >-
+      {{
+        authentik_existing_groups.json.results
+        | selectattr('name', 'equalto', policy_binding.group_name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    user_pk: >-
+      {{
+        authentik_existing_users.json.results
+        | selectattr('username', 'equalto', policy_binding.username)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    policy_binding_pk: >-
+      {{
+        authentik_existing_policy_bindings.json.results
+        | selectattr('target', 'equalto', policy_target)
+        | selectattr('policy', 'equalto', policy_pk)
+        | selectattr('group', 'equalto', group_pk)
+        | selectattr('user', 'equalto', user_pk)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_policy_binding: "{{ policy_binding_pk is none }}"
+  changed_when: >-
+    new_policy_binding or
+    ((authentik_custom_policy_binding.json
+    | dict2items
+    | rejectattr('key', 'equalto', 'policy_obj')
+    | rejectattr('key', 'equalto', 'group_obj')
+    | rejectattr('key', 'equalto', 'user_obj')
+    | items2dict)
+    !=
+    (authentik_existing_policy_bindings.json.results
+    | selectattr('target', 'equalto', policy_target)
+    | selectattr('policy', 'equalto', policy_pk)
+    | first
+    | dict2items
+    | rejectattr('key', 'equalto', 'policy_obj')
+    | rejectattr('key', 'equalto', 'group_obj')
+    | rejectattr('key', 'equalto', 'user_obj')
+    | items2dict
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

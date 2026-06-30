@@ -1,0 +1,271 @@
+---
+- name: Merge authentik user-defined configuration
+  ansible.builtin.set_fact:
+    _authentik_config: >
+      {{
+        authentik_config
+        | combine(authentik_config_override, recursive=true, list_merge='replace')
+      }}
+
+- name: Show config
+  ansible.builtin.debug:
+    msg: |-
+      _authentik_config:
+      {{ _authentik_config | to_nice_yaml }}
+    verbosity: 1
+
+- name: Validate required variables
+  delegate_to: localhost
+  ansible.builtin.assert:
+    that:
+      - authentik_subdomain is defined
+      - authentik_subdomain | length > 0
+      - authentik_subdomain is match ("(?=^.{1,63}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)?[a-zA-Z]{1,63}$)")
+
+      - authentik_base_domain is defined
+      - authentik_base_domain | length > 0
+      - authentik_base_domain is match ("(?=^.{4,63}$)(^((?!-)[a-zA-Z0-9-]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}$)")
+
+    fail_msg: "Required Authentik variables not set"
+    quiet: true
+  no_log: true
+
+- name: Test Authentik connectivity and tokens
+  block:
+    - name: Build list of tokens to test
+      ansible.builtin.set_fact:
+        authentik_tokens_to_test: >-
+          {{
+            (authentik_bootstrap_token is defined and authentik_bootstrap_token | length > 0)
+            | ternary([{'name': 'authentik_bootstrap_token', 'value': authentik_bootstrap_token}], [])
+            +
+            (authentik_api_token is defined and authentik_api_token | length > 0)
+            | ternary([{'name': 'authentik_api_token', 'value': authentik_api_token}], [])
+          }}
+
+    - name: Fail if no tokens are defined
+      ansible.builtin.fail:
+        msg: "No token are defined"
+      when: authentik_tokens_to_test | length == 0
+
+    - name: Test each token against the API
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/users/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ item.value }}"
+        status_code: [200, 401, 403]
+        validate_certs: "{{ authentik_api_validate_certs }}"
+      register: authentik_token_tests
+      loop: "{{ authentik_tokens_to_test }}"
+      loop_control:
+        label: "{{ item.name }}"
+      failed_when: false
+
+    - name: Find working token
+      ansible.builtin.set_fact:
+        authentik_token: "{{ item.item.value }}"
+      when: item.status == 200
+      loop: "{{ authentik_token_tests.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Fail if no working token found
+      ansible.builtin.fail:
+        msg: "None of provided token are working"
+      when: authentik_token is not defined
+
+- name: Copy medias
+  block:
+    - name: Get media volume infos
+      community.docker.docker_volume_info:
+        name: "{{ authentik_volume_prefix }}-media"
+      register: authentik_volume_media_infos
+
+    - name: Ensure directory exists within the volume
+      ansible.builtin.file:
+        path: "{{ authentik_volume_media_infos.volume.Mountpoint }}/{{ item }}"
+        state: directory
+        # recurse: true
+        owner: "101000"
+        group: "101000"
+        mode: "0755"
+      loop:
+        - "public/branding"
+
+    - name: Ensure media files are present
+      community.docker.docker_container_copy_into:
+        container: "{{ authentik_server_container_name }}"
+        path: "{{ item.src }}"
+        container_path: "/data/media/{{ item.path }}"
+        force: false
+      loop: "{{ query('community.general.filetree', 'files/media/') }}"
+      when: item.state == 'file'
+
+- name: Copy templates
+  block:
+    - name: Get templates volume infos
+      community.docker.docker_volume_info:
+        name: "{{ authentik_volume_prefix }}-templates"
+      register: authentik_volume_templates_infos
+
+    - name: Ensure template files are present
+      community.docker.docker_container_copy_into:
+        container: "{{ authentik_server_container_name }}"
+        path: "{{ item.src }}"
+        container_path: "/templates/{{ item.path }}"
+        force: false
+      loop: "{{ query('community.general.filetree', 'files/templates/') }}"
+      when: item.state == 'file'
+
+- name: Configure licences
+  ansible.builtin.include_tasks: licences.yml
+
+- name: Configure settings
+  ansible.builtin.include_tasks: settings.yml
+
+- name: Configure identities
+  ansible.builtin.include_tasks: identities.yml
+
+- name: Configure prompts
+  ansible.builtin.include_tasks: prompts.yml
+
+- name: Configure policies
+  ansible.builtin.include_tasks: policies.yml
+
+- name: Configure flows
+  ansible.builtin.include_tasks: flows.yml
+
+- name: Configure stages
+  ansible.builtin.include_tasks: stages.yml
+
+- name: Configure bindings
+  block:
+    - name: Get existing flows
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+      register: authentik_existing_flows
+      retries: 5
+      delay: 20
+
+    - name: Get existing stages
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+      register: authentik_existing_stages
+      retries: 5
+      delay: 20
+
+    - name: Get existing policies
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/policies/all/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+      register: authentik_existing_policies
+      retries: 5
+      delay: 20
+
+    - name: Get existing users
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/users/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+      register: authentik_existing_users
+      retries: 5
+      delay: 20
+
+    - name: Get existing groups
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/groups/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+      register: authentik_existing_groups
+      retries: 5
+      delay: 20
+
+    - name: Configure bindings
+      ansible.builtin.include_tasks: bindings/flow_bindings.yml
+      loop: "{{ _authentik_config.flow_bindings }}"
+      loop_control:
+        label: "Flow : {{ flow_binding.flow_slug }}"
+        loop_var: flow_binding
+
+- name: Configure brands
+  block:
+    - name: Configure brands
+      ansible.builtin.include_tasks: brands.yml
+      loop: "{{ _authentik_config.brands.list | selectattr('state', 'equalto', 'present') }}"
+      loop_control:
+        loop_var: brand
+        label: "Brand : {{ brand.domain }}"
+      when:
+        - _authentik_config.brands.list is defined
+        - _authentik_config.brands.list is iterable
+        - _authentik_config.brands.list is not mapping
+        - _authentik_config.brands.list | length > 0
+
+    - name: Get authentik brands
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/brands/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+          Accept: "application/json"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_existing_brands
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Remove other brands
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/core/brands/{{ item }}/"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [204]
+        timeout: "{{ authentik_api_call_timeout }}"
+      loop: "{{ brands_to_delete }}"
+      loop_control:
+        label: "{{ authentik_existing_brands.json.results | selectattr('brand_uuid', 'equalto', item) | map(attribute='domain') | first }}"
+      vars:
+        brands_to_delete: >-
+          {{
+            (_authentik_config.brands.remove_others | bool) | ternary
+            (
+              authentik_existing_brands.json.results
+                | rejectattr('domain', 'in', _authentik_config.brands.list | selectattr('state', 'equalto', 'present') | map(attribute='domain'))
+                | map(attribute='brand_uuid')
+                | list,
+              authentik_existing_brands.json.results
+                | selectattr('domain', 'in', _authentik_config.brands.list | selectattr('state', 'equalto', 'absent') | map(attribute='domain'))
+                | map(attribute='brand_uuid')
+                | list
+            )
+          }}
+      changed_when: true
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+- name: Configure invitations
+  ansible.builtin.include_tasks: invitations.yml

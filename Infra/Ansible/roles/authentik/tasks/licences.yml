@@ -1,0 +1,98 @@
+---
+- name: Check if authentik can reach internet to validate licences
+  community.docker.docker_container_exec:
+    container: "{{ authentik_worker_container_name }}"
+    command: bash -c "curl -sf --max-time 5 https://version.goauthentik.io -o /dev/null"
+  register: authentik_connectivity_check
+  changed_when: false
+  failed_when: false
+
+- name: Get existing licences
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/enterprise/license/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_licences
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "Add licence"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/enterprise/license/"
+    method: "POST"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      key: "{{ licence.key }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [201]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_licence
+  vars:
+    licence_pk: >-
+      {{
+        authentik_existing_licences.json.results
+        | selectattr('key', 'equalto', licence.key)
+        | map(attribute='license_uuid')
+        | first
+        | default(none)
+      }}
+    new_licence: "{{ licence_pk is none }}"
+  loop: "{{ _authentik_config.licences.list | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "{{ licence.key }}"
+    loop_var: licence
+  when:
+    - _authentik_config.licences.list is defined
+    - _authentik_config.licences.list is iterable
+    - _authentik_config.licences.list is not mapping
+    - _authentik_config.licences.list | length > 0
+    - licence.state == 'present'
+    - authentik_connectivity_check.rc == 0
+  changed_when: >-
+    new_licence or
+    (authentik_custom_licence.json
+    !=
+    (authentik_existing_licences.json.results
+    | selectattr('key', 'equalto', licence.key)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Remove other licences
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/enterprise/license/{{ item }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [204]
+    timeout: "{{ authentik_api_call_timeout }}"
+  loop: "{{ licences_to_delete }}"
+  loop_control:
+    label: "{{ authentik_existing_licences.json.results | selectattr('key', 'equalto', item) | map(attribute='key') | first }}"
+  vars:
+    licences_to_delete: >-
+      {{
+        (_authentik_config.licences.remove_others | bool) | ternary
+        (
+          authentik_existing_licences.json.results
+            | rejectattr('key', 'in', _authentik_config.licences.list | selectattr('state', 'equalto', 'present') | map(attribute='key'))
+            | map(attribute='license_uuid')
+            | list,
+          authentik_existing_licences.json.results
+            | selectattr('key', 'in', _authentik_config.licences.list | selectattr('state', 'equalto', 'absent') | map(attribute='key'))
+            | map(attribute='license_uuid')
+            | list
+        )
+      }}
+  changed_when: true
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

@@ -1,0 +1,593 @@
+---
+##############################
+# Common data
+##############################
+install_app_name: "authentik" # noqa: var-naming[no-role-prefix]
+install_dir: "/var/lib/container-apps/{{ install_app_name }}" # noqa: var-naming[no-role-prefix]
+
+##############################
+# Containers settings
+##############################
+
+# Server container
+authentik_server_image: "ghcr.io/goauthentik/server:2025.12.3"
+authentik_server_container_name: "{{ install_app_name }}-server"
+authentik_server_networks:
+  - "{{ install_app_name }}-backend"
+  - "{{ install_app_name }}-egress"
+  - "proxy-network"
+authentik_server_memory_limit: "1g"
+authentik_server_cpu_limit: "1"
+authentik_server_restart_policy: "unless-stopped"
+authentik_server_healthcheck_interval: "30s"
+authentik_server_healthcheck_timeout: "30s"
+authentik_server_healthcheck_retries: 3
+authentik_server_healthcheck_start_period: "60s"
+
+# Worker container
+authentik_worker_image: "{{ authentik_server_image }}"
+authentik_worker_container_name: "{{ install_app_name }}-worker"
+authentik_worker_networks:
+  - "{{ install_app_name }}-backend"
+  - "{{ install_app_name }}-egress"
+  - "proxy-network"
+authentik_worker_memory_limit: "512m"
+authentik_worker_cpu_limit: "0.5"
+authentik_worker_restart_policy: "unless-stopped"
+authentik_worker_healthcheck_interval: "30s"
+authentik_worker_healthcheck_timeout: "30s"
+authentik_worker_healthcheck_retries: 3
+authentik_worker_healthcheck_start_period: "60s"
+
+authentik_worker_replicas: 1
+
+# PostgreSQL container
+authentik_postgres_image: "docker.io/library/postgres:16-alpine"
+authentik_postgres_container_name: "{{ install_app_name }}-postgres"
+authentik_postgres_networks:
+  - "{{ install_app_name }}-backend"
+authentik_postgres_memory_limit: "512m"
+authentik_postgres_cpu_limit: "0.5"
+authentik_postgres_restart_policy: "unless-stopped"
+authentik_postgres_healthcheck_interval: "30s"
+authentik_postgres_healthcheck_timeout: "5s"
+authentik_postgres_healthcheck_retries: 5
+authentik_postgres_healthcheck_start_period: "20s"
+
+# Networks
+authentik_managed_networks:
+  - name: "{{ install_app_name }}-backend"
+    driver: bridge
+    internal: true
+  - name: "{{ install_app_name }}-egress"
+    driver: bridge
+authentik_external_networks:
+  - name: "proxy-network"
+
+# Volumes
+authentik_volume_prefix: "{{ install_app_name }}"
+authentik_volume_labels: []
+
+##############################
+# PostgreSQL settings
+##############################
+authentik_postgres_db: "authentik"
+authentik_postgres_user: ""
+authentik_postgres_password: ""
+
+##############################
+# Authentik settings
+##############################
+
+# Base configuration
+authentik_subdomain: ""
+authentik_base_domain: ""
+authentik_domain: "{{ authentik_subdomain }}.{{ authentik_base_domain }}"
+authentik_secret_key: ""
+authentik_error_reporting_enabled: false
+
+# API
+authentik_api_url: "https://{{ authentik_domain }}:{{ authentik_https_port }}"
+authentik_api_validate_certs: false
+authentik_api_call_timeout: 15
+authentik_api_call_retries: 10
+authentik_api_call_delay: 1
+authentik_api_token: ""
+authentik_token_callback_tasks: ""
+
+# Email configuration (optional)
+authentik_email_enabled: true
+authentik_email_host: ""
+authentik_email_port: ""
+authentik_email_username: ""
+authentik_email_password: ""
+authentik_email_use_tls: false
+authentik_email_timeout: 10
+authentik_email_from: ""
+
+# Bootstrap configuration
+authentik_bootstrap_enabled: false
+authentik_bootstrap_password: ""
+authentik_bootstrap_token: ""
+authentik_bootstrap_email: ""
+
+# Security settings
+authentik_log_level: info # trace, debug, info, warning, error
+authentik_cookie_domain: "{{ authentik_base_domain }}"
+
+# Ports (internal)
+authentik_http_port: 9000
+authentik_https_port: 9443
+authentik_metrics_port: 9300
+
+##############################
+# Authentik configuration
+##############################
+authentik_config_override: {}
+authentik_config:
+  licences:
+    remove_others: true
+    list: []
+  settings:
+    avatars: "gravatar, initials"
+    default_user_change_name: true
+    default_user_change_username: true
+    default_user_change_email: true
+    event_retention: "days=365"
+    reputation_lower_limit: -5
+    reputation_upper_limit: 5
+    footer_links: []
+    gdpr_compliance: false
+    impersonation: true
+    impersonation_require_reason: false
+    default_token_duration: "minutes=30"
+    default_token_length: 64
+    flags: {}
+  identities:
+    roles:
+      remove_others: true
+      list:
+        - name: authentik Read-only # Avoid removing this role
+          state: present
+        - name: Foo Role
+          state: present
+          permissions:
+            - authentik_core.reset_user_password
+
+    groups:
+      remove_others: true
+      list:
+        - name: authentik Admins # Avoid removing this group
+          state: present
+
+        - name: authentik Read-only # Avoid removing this group
+          state: present
+
+        - name: Foo Group
+          state: present
+          is_superuser: false
+          parent: authentik Read-only
+          roles:
+            - Foo Role
+          attributes: {}
+
+    users:
+      remove_others: false
+      remove_bootstrap: true
+      list:
+        - username: Foo
+          name: "Foo User"
+          state: present
+          is_active: true
+          groups:
+            - authentik Read-only
+            - Foo group
+          email: "foo.bar@mybrand.com"
+          subpath: path
+          type: internal
+          attributes: {}
+          password: Bar
+
+    tokens:
+      - name: Token_name # Must match ^[-a-zA-Z0-9_]{1,255}$
+        description: Token description
+        username: Foo
+        intent: api # verification, api, recovery, app_password
+        expires: "2026-12-12T15:00:00.000Z"
+        expiring: true
+        state: present
+        use_as_new_api_token: false
+  prompts:
+    remove_others: false
+    list:
+      - name: ""
+        state: present
+        field_key: ""
+        label: ""
+        # type can be : text, text_area, text_read_only, text_area_read_only, username,
+        # email, password, number, checkbox, radio-button-group, dropdown, date,
+        # date-time, file, separator, hidden, static, ak-locale
+        type: text
+        required: true
+        placeholder: ""
+        initial_value: ""
+        order: 100
+        sub_text: ""
+        placeholder_expression: false
+        initial_value_expression: false
+  policies:
+    remove_others: false
+    list:
+      - name: "Event matcher"
+        type: event_matcher
+        state: present
+        execution_logging: true
+        action: login
+        client_ip: 10.11.12.13
+        app: authentik.tenants
+        model: authentik_tenants.domain
+
+      - name: "Expression"
+        type: expression
+        state: present
+        execution_logging: true
+        expression: |-
+          from authentik.flows.models import Flow, FlowAuthenticationRequirement
+          Flow.objects.filter(slug="initial-setup").update(
+              authentication=FlowAuthenticationRequirement.REQUIRE_SUPERUSER,
+          )
+          return True
+
+      - name: "GeoIP"
+        type: geoip
+        state: present
+        execution_logging: true
+        ASNs:
+          - 13335
+          - 15169
+          - 20940
+        countries:
+          - FR
+          - DE
+          - US
+        check_history_distance: true
+        history_max_distance_km: 1000
+        distance_tolerance_km: 500
+        history_login_count: 500
+        check_impossible_travel: false
+        impossible_tolerance_km: 250
+
+      - name: "Password"
+        type: password
+        state: present
+        execution_logging: true
+        password_field: "password"
+        amount_digits: 2
+        amount_uppercase: 2
+        amount_lowercase: 2
+        amount_symbols: 2
+        length_min: 16
+        symbol_charset: "!:;"
+        error_message: "Error message"
+        check_static_rules: true
+        check_have_i_been_pwned: true
+        check_zxcvbn: true
+        hibp_allowed_count: 5
+        zxcvbn_score_threshold: 3 # 0 to 4
+
+      - name: "Password Expiry"
+        type: password_expiry
+        state: present
+        execution_logging: true
+        days: 90
+        deny_only: true
+
+      - name: "Reputation"
+        type: reputation
+        state: present
+        execution_logging: true
+        check_ip: true
+        check_username: true
+        threshold: -5
+
+      - name: "Unique Password"
+        type: unique_password
+        state: present
+        execution_logging: true
+        password_field: "password"
+        num_historical_passwords: 20
+  flows:
+    remove_others: false
+    list:
+      - slug: ""
+        name: ""
+        state: present
+        title: ""
+        designation: authentication # authentication, authorization, invalidation, enrollment, unenrollment, recovery, stage_configuration
+        background: ""
+        policy_engine_mode: all # all, any
+        compatibility_mode: true
+        layout: stacked # stacked, content_left, content_right, sidebar_left, sidebar_right
+        denied_action: message_continue # message_continue, message, continue
+        authentication: none # none, require_authenticated, require_unauthenticated, require_superuser, require_redirect, require_outpost
+  stages:
+    remove_others: false
+    list:
+      - name: Identification Stage
+        type: identification
+        state: present
+        user_fields:
+          - email
+          - username
+          - upn
+        password_stage_name: ""
+        captcha_stage_name: ""
+        case_insensitive_matching: false
+        pretend_user_exists: true
+        show_matched_user: true
+        enable_remember_me: true
+        sources_name: []
+        show_source_labels: false
+        passwordless_flow_slug: ""
+        enrollment_flow_slug: ""
+        recovery_flow_slug: ""
+        webauthn_stage_name: ""
+
+      - name: Email Stage
+        type: email
+        state: present
+        activate_user_on_success: false
+        use_global_settings: true
+        token_expiry: "minutes=30"
+        subject: "Email verification"
+        # temlate can be : email/password_reset.html, email/account_confirmation.html, email/email_otp.html, email/event_notification.html
+        # Or custom files : custom-file.html, custom-file.txt
+        template: "email/password_reset.html"
+        recovery_max_attempts: 2
+        recovery_cache_timeout: "minutes=5"
+        # Connection settings
+        host: ""
+        port: ""
+        username: ""
+        password: ""
+        use_tls: false
+        use_ssl: false
+        timeout: 10
+        from_address: ""
+
+      - name: Invitation Stage
+        type: invitation
+        state: present
+        continue_flow_without_invitation: true
+
+      - name: Captcha Stage
+        type: captcha
+        state: present
+        public_key: ""
+        private_key: ""
+        interactive: false
+        score_min_threshold: 0.5
+        score_max_threshold: 1
+        error_on_invalid_score: true
+        js_url: ""
+        api_url: ""
+
+      - name: Consent Stage
+        type: consent
+        state: present
+        mode: always_require # always_require, permanent, expiring
+        consent_expire_in: "weeks=4"
+
+      - name: Deny Stage
+        type: deny
+        state: present
+        deny_message: ""
+
+      - name: SMS Authenticator Stage Setup
+        type: auth_sms_setup
+        state: present
+        friendly_name: ""
+        provider: generic # generic, twilio
+        from_number: ""
+        account_sid: "" # External API URL or Twilio SID
+        auth_type: basic # basic, bearer. Used only with generic provider
+        auth: "" # API username or bearer token or Twilio token
+        auth_password: "" # Used only with generic provider
+        verify_only: true
+        webhook_mapping_name: ""
+        configure_flow_slug: ""
+
+      - name: TOTP Authenticator Stage Setup
+        type: auth_totp_setup
+        state: present
+        friendly_name: ""
+        digits: 6 # 6, 8
+        configure_flow_slug: ""
+
+      - name: Email Authenticator Stage Setup
+        type: auth_email_setup
+        state: present
+        friendly_name: ""
+        subject: ""
+        token_expiry: "minutes=15"
+        configure_flow_slug: ""
+        template: ""
+        # Connection settings
+        host: ""
+        port: ""
+        username: ""
+        password: ""
+        use_tls: false
+        use_ssl: false
+        timeout: 10
+        from_address: ""
+
+      - name: Static Authenticator Stage Setup
+        type: auth_static_setup
+        state: present
+        friendly_name: ""
+        token_count: 1
+        token_length: 64
+        configure_flow_slug: ""
+
+      - name: DUO Authenticator Stage Setup
+        type: auth_duo_setup
+        state: present
+        friendly_name: ""
+        api_hostname: ""
+        client_id: ""
+        client_secret: ""
+        admin_integration_key: ""
+        admin_secret_key: ""
+        configure_flow_slug: ""
+
+      - name: WebAuthn Authenticator Stage Setup
+        type: auth_webauthn_setup
+        state: present
+        friendly_name: ""
+        user_verification: preferred # required, preferred, discouraged
+        resident_key_requirement: preferred # discouraged, preferred, required
+        authenticator_attachment: cross-platform # platform, cross-platform
+        max_attempts: 3
+        device_type_restrictions: []
+        configure_flow_slug: ""
+
+      - name: Login Stage
+        type: user_login
+        state: present
+        session_duration: "hours=1"
+        remember_me_offset: "minutes=30"
+        remember_device: "days=7"
+        network_binding: bind_asn_network_ip # no_binding, bind_asn, bind_asn_network, bind_asn_network_ip
+        geoip_binding: bind_continent_country_city # no_binding, bind_continent, bind_continent_country, bind_continent_country_city
+        terminate_other_sessions: true
+
+      - name: Logout Stage
+        type: user_logout
+        state: present
+
+      - name: Password Stage
+        type: password
+        state: present
+        # backends can be : authentik.core.auth.InbuiltBackend, authentik.core.auth.TokenBackend,
+        # authentik.sources.ldap.auth.LDAPBackend, authentik.sources.kerberos.auth.KerberosBackend
+        backends: []
+        configure_flow_slug: ""
+        failed_attempts_before_cancel: 2
+        allow_show_password: false
+
+      - name: Redirect stage
+        type: redirect
+        state: present
+        mode: static # static, flow
+        target_static: ""
+        target_flow_slug: ""
+        keep_context: true
+
+      - name: User delete stage
+        type: user_delete
+        state: present
+
+      - name: Authenticator Stage Validate
+        type: auth_validate
+        state: present
+        device_classes:
+          - static
+          - totp
+          - webauthn
+          - duo
+          - sms
+          - email
+        last_auth_threshold: "minutes=30"
+        not_configured_action: configure # skip, deny, configure
+        configuration_stages: []
+        webauthn_user_verification: preferred # required, preferred, discouraged
+        webauthn_allowed_device_types: []
+
+      - name: Prompt Stage
+        type: prompt
+        state: present
+        fields_name: []
+        validation_policies_name: []
+
+      - name: User write Stage
+        type: user_write
+        state: present
+        user_creation_mode: create_when_required # never_create, create_when_required, always_create
+        create_users_as_inactive: true
+        user_type: external # internal, external, service_account, internal_service_account
+        user_path_template: others
+        create_users_group_name: ""
+
+      - name: Source stage
+        type: source
+        state: present
+        source_name: ""
+        resume_timeout: "hours=1"
+  flow_bindings:
+    - flow_slug: "test-2"
+      flow_policies_bindings:
+        - policy_name: "Expression" # One of policy_name, username, group_name
+          group_name: ""
+          username: ""
+          state: present
+          negates: false
+          enabled: true
+          order: 10
+          timeout: 30
+          failure_result: false
+      flow_stages_bindings:
+        - stage_name: "{{ hosting_domain }} - Identification Stage"
+          state: present
+          evaluate_on_plan: false
+          re_evaluate_policies: true
+          order: 10
+          policy_engine_mode: "all" # all, any
+          invalid_response_action: "retry" # retry, restart, restart_with_context
+          stage_policies_bindings:
+            - policy_name: "" # One of policy_name, username, group_name
+              group_name: "authentik Read-only"
+              username: ""
+              state: present
+              negates: true
+              enabled: true
+              order: 10
+              timeout: 30
+              failure_result: false
+  brands:
+    remove_others: true
+    list:
+      - domain: "{{ authentik_base_domain }}"
+        name: "My brand"
+        default: true
+        logo: "/media/logo.svg"
+        favicon: "/media/logo.ico"
+        background: ""
+        custom_css: ""
+        default_app: ""
+        default_flows:
+          authentication: ""
+          invalidadion: ""
+          recovery: ""
+          unenrollment: ""
+          user_settings: ""
+          device_code: ""
+        web_certificate: ""
+        client_certificates: []
+        attributes: {}
+        state: present
+  invitations:
+    remove_others: false
+    list:
+      - name: template
+        expires: "{{ '%Y-%m-%dT%H:%M:%SZ' | strftime(ansible_date_time.epoch | int - 86400) }}" # Create an expired template
+        single_use: true
+        flow_slug: "enrollment-flow"
+        fixed_data:
+          username: to.be.defined
+          name: optional NAME
+          email: optional.email@example.tld
+          attributes:
+            account_locked: false
+            employee_type: "internal"
+            department: "IT"

@@ -1,0 +1,38 @@
+---
+# backup_cron role defaults
+# All paths and schedules can be overridden in group_vars or host_vars.
+
+# Where backups land on the host before being mirrored to MinIO
+backup_local_dir: /opt/backups
+
+# MinIO connection — mc (MinIO client) must be installed on the host
+
+# overridden via vault in production
+backup_minio_alias: "lab"
+backup_minio_url: "http://192.168.0.110:9000"
+backup_minio_user: "minioadmin"
+backup_minio_password: "changeme"     # override with vault_minio_root_password
+backup_minio_bucket: "lab-backups"
+
+# PostgreSQL connection
+backup_pg_host: "localhost"
+backup_pg_port: 5432
+backup_pg_user: "postgres"
+backup_pg_databases:
+  - postgres
+  - nextcloud
+  - authentik
+
+# Qdrant connection
+backup_qdrant_url: "http://localhost:6333"
+
+# ChromaDB data dir on host — we copy this directly
+backup_chromadb_data_dir: /opt/chromadb/data
+
+# Cron schedule — runs at 2am daily by default
+backup_cron_hour: "2"
+backup_cron_minute: "0"
+backup_cron_user: root
+
+# How many days of local backups to keep before pruning
+backup_retention_days: 7

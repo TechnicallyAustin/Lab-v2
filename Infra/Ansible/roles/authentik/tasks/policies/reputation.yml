@@ -1,0 +1,65 @@
+---
+- name: Get existing policies
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_policies
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing reputation policies
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/reputation/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_reputation_policies
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: "{{ ('Create' if new_policy else 'Update') ~ ' policy: ' ~ policy.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/policies/reputation/{{ policy_pk ~ '/' if not new_policy}}"
+    method: "{{ 'POST' if new_policy else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ policy.name }}"
+      execution_logging: "{{ policy.execution_logging if 'execution_logging' in policy else omit }}"
+      check_ip: "{{ policy.check_ip if 'check_ip' in policy else omit }}"
+      check_username: "{{ policy.check_username if 'check_username' in policy else omit }}"
+      threshold: "{{ policy.threshold if 'threshold' in policy else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_policy else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_policy
+  vars:
+    policy_pk: >-
+      {{
+        authentik_existing_policies.json.results
+        | selectattr('name', 'equalto', policy.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_policy: "{{ policy_pk is none }}"
+  changed_when: >-
+    new_policy or
+    (authentik_custom_policy.json
+    !=
+    (authentik_existing_reputation_policies.json.results
+    | selectattr('pk', 'equalto', policy_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

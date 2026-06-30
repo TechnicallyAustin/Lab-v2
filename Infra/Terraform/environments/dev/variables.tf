@@ -53,6 +53,12 @@ variable "lxc_password" {
   sensitive   = true
 }
 
+variable "ssh_keys" {
+  description = "SSH public keys to add to the LXC user account"
+  type        = string
+  sensitive   = true
+}
+
 variable "platform" {
   type = map(object({
     role         = string
@@ -84,6 +90,7 @@ variable "infrastructure" {
     template_file_id = string
     os_type          = string
     unprivileged     = bool
+    ssh_keys         = string
     nesting          = bool
     started          = bool
     cores            = number

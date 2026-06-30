@@ -1,0 +1,33 @@
+---
+- name: "Bind stages on flow : {{ flow_binding.flow_slug }}"
+  ansible.builtin.include_tasks: bindings/stage_bindings.yml
+  when: flow_binding.flow_stages_bindings is defined
+  loop: "{{ flow_binding.flow_stages_bindings | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "Stage : {{ stage_binding.stage_name }}"
+    loop_var: stage_binding
+  vars:
+    stage_target: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', flow_binding.flow_slug)
+        | map(attribute='pk')
+        | first
+      }}
+
+- name: "Bind policies on flow : {{ flow_binding.flow_slug }}"
+  ansible.builtin.include_tasks: bindings/policy_bindings.yml
+  when: flow_binding.flow_policies_bindings is defined
+  loop: "{{ flow_binding.flow_policies_bindings | selectattr('state', 'equalto', 'present') }}"
+  loop_control:
+    label: "Policy : {{ policy_binding.policy_name }}"
+    loop_var: policy_binding
+  vars:
+    target_type: flow
+    policy_target: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', flow_binding.flow_slug)
+        | map(attribute='pk')
+        | first
+      }}

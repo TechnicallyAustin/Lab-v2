@@ -1,0 +1,144 @@
+---
+- name: Get existing stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/all/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing authenticator webauthn stages
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/authenticator/webauthn/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_auth_webauthn_stages
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Get existing flows
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/flows/instances/?page_size=10000"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: [200]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_existing_flows
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"
+
+- name: Check device types
+  when:
+    - stage.device_type_restrictions is defined
+    - stage.device_type_restrictions is iterable
+    - stage.device_type_restrictions is not mapping
+    - stage.device_type_restrictions | length > 0
+  block:
+    - name: Get existing device types
+      ansible.builtin.uri:
+        url: "{{ authentik_api_url }}/api/v3/stages/authenticator/webauthn_device_types/?page_size=10000"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ authentik_token }}"
+        validate_certs: "{{ authentik_api_validate_certs }}"
+        status_code: [200]
+        timeout: "{{ authentik_api_call_timeout }}"
+      register: authentik_existing_device_types
+      retries: "{{ authentik_api_call_retries }}"
+      delay: "{{ authentik_api_call_delay }}"
+
+    - name: Assert that defined device types match allowed values
+      ansible.builtin.assert:
+        that:
+          - stage.device_type_restrictions | difference(possible_values) | length == 0
+        fail_msg: |-
+          Invalid values found:
+          {{ stage.device_type_restrictions | difference(possible_values) | to_nice_yaml }}
+
+          Possible values:
+          {{ possible_values | sort | to_nice_yaml }}
+        quiet: true
+      vars:
+        possible_values: >-
+          {{
+            authentik_existing_device_types.json.results
+            | map(attribute='description')
+          }}
+
+- name: Assert configure flow exists
+  ansible.builtin.assert:
+    that: >-
+      stage.configure_flow_slug in authentik_existing_flows.json.results | map(attribute='slug') | list
+    fail_msg: "Flow '{{ stage.configure_flow_slug }}' not found in existing flows"
+    quiet: true
+  when:
+    - stage.configure_flow_slug is defined
+    - stage.configure_flow_slug | length > 0
+
+- name: "{{ ('Create' if new_stage else 'Update') ~ ' stage: ' ~ stage.name }}"
+  ansible.builtin.uri:
+    url: "{{ authentik_api_url }}/api/v3/stages/authenticator/webauthn/{{ stage_pk ~ '/' if not new_stage}}"
+    method: "{{ 'POST' if new_stage else 'PATCH' }}"
+    headers:
+      Authorization: "Bearer {{ authentik_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ stage.name }}"
+      friendly_name: "{{ stage.friendly_name if 'friendly_name' in stage else omit }}"
+      user_verification: "{{ stage.user_verification if 'user_verification' in stage or new_stage else omit }}"
+      resident_key_requirement: "{{ stage.resident_key_requirement if 'resident_key_requirement' in stage or new_stage else omit }}"
+      authenticator_attachment: "{{ stage.authenticator_attachment if 'authenticator_attachment' in stage else omit }}"
+      max_attempts: "{{ stage.max_attempts if 'max_attempts' in stage or new_stage else omit }}"
+      device_type_restrictions: "{{ device_type_restrictions_pk if 'device_type_restrictions' in stage else omit }}"
+      configure_flow: "{{ configure_flow_pk if 'configure_flow_slug' in stage else omit }}"
+    validate_certs: "{{ authentik_api_validate_certs }}"
+    status_code: ["{{ 201 if new_stage else 200 }}"]
+    timeout: "{{ authentik_api_call_timeout }}"
+  register: authentik_custom_stage
+  vars:
+    stage_pk: >-
+      {{
+        authentik_existing_stages.json.results
+        | selectattr('name', 'equalto', stage.name)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    new_stage: "{{ stage_pk is none }}"
+    configure_flow_pk: >-
+      {{
+        authentik_existing_flows.json.results
+        | selectattr('slug', 'equalto', stage.configure_flow_slug)
+        | map(attribute='pk')
+        | first
+        | default(none)
+      }}
+    device_type_restrictions_pk: >-
+      {{
+        authentik_existing_device_types.json.results | default([])
+        | selectattr('description', 'in', stage.device_type_restrictions | default([]))
+        | map(attribute='aaguid')
+        | list
+      }}
+  changed_when: >-
+    new_stage or
+    (authentik_custom_stage.json
+    !=
+    (authentik_existing_auth_webauthn_stages.json.results
+    | selectattr('pk', 'equalto', stage_pk)
+    | first
+    | default({})))
+  retries: "{{ authentik_api_call_retries }}"
+  delay: "{{ authentik_api_call_delay }}"

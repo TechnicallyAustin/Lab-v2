@@ -1,0 +1,21 @@
+# code: language=ansible
+# vim: set filetype=yaml.ansible :
+---
+- name: "vw : create root dir"
+  ansible.builtin.file:
+    path: "{{ vaultwarden_docker_root_folder }}"
+    mode: "{{ vaultwarden_docker_root_folder_mode }}"
+    owner: "{{ vaultwarden_docker_root_folder_owner }}"
+    group: "{{ vaultwarden_docker_root_folder_group }}"
+    state: directory
+
+- name: "vw : render compose.yml"
+  ansible.builtin.copy:
+    content: "{{ vaultwarden_docker_compose_template }}"
+    dest: "{{ vaultwarden_docker_root_folder }}/compose.yml"
+    mode: '0644'
+    owner: "{{ vaultwarden_docker_root_folder_owner }}"
+    group: "{{ vaultwarden_docker_root_folder_group }}"
+  notify:
+    - "vw : docker compose up"
+    - "vw : docker compose restart"

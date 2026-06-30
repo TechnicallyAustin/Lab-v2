@@ -1,0 +1,33 @@
+---
+- name: Create Uptime Kuma data directory
+  ansible.builtin.file:
+    path: "{{ uptime_kuma_data_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Pull Uptime Kuma image
+  community.docker.docker_image:
+    name: "{{ uptime_kuma_image }}:{{ uptime_kuma_version }}"
+    source: pull
+
+- name: Run Uptime Kuma container
+  community.docker.docker_container:
+    name: "{{ uptime_kuma_container_name }}"
+    image: "{{ uptime_kuma_image }}:{{ uptime_kuma_version }}"
+    state: started
+    restart_policy: "{{ uptime_kuma_restart_policy }}"
+    published_ports:
+      - "{{ uptime_kuma_port }}:3001"
+    volumes:
+      - "{{ uptime_kuma_data_dir }}:/app/data"
+
+- name: Verify Uptime Kuma container is running
+  community.docker.docker_container_info:
+    name: "{{ uptime_kuma_container_name }}"
+  register: kuma_info
+
+- name: Show Uptime Kuma status
+  ansible.builtin.debug:
+    msg: "Uptime Kuma running: {{ kuma_info.container.State.Running }}"
