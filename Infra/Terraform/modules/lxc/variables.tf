@@ -134,3 +134,9 @@ variable "lxc_password" {
   type        = string
   sensitive   = true
 }
+
+variable "ssh_keys" {
+  description = "SSH public keys to add to the LXC user account"
+  type        = string
+  sensitive   = true
+}

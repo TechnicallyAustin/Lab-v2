@@ -90,7 +90,7 @@ variable "infrastructure" {
     template_file_id = string
     os_type          = string
     unprivileged     = bool
-    ssh_keys         = string
+    ssh_keys         = [string]
     nesting          = bool
     started          = bool
     cores            = number
