@@ -1,7 +1,40 @@
 ---
-- name: Core Networking Infrstructure
+- name: Core Networking Infrastructure
   hosts: network
-  become: true
+  pre_tasks:
+    - name: Create tailscaled override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/tailscaled.service.d
+        state: directory
+        mode: '0755'
+      become: true
+      when: is_lxc | default(false) | bool
+     
+    - name: Configure tailscaled for LXC userspace networking
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/tailscaled.service.d/override.conf
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=/usr/sbin/tailscaled --tun=userspace-networking --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock
+        mode: '0644'
+      become: true
+      when: is_lxc | default(false) | bool
+
+    - name: Create tailscaled override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/tailscaled.service.d
+        state: directory
+        mode: '0755'
+      become: true
+      when: is_lxc | default(false) | bool
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true
+      become: true
+      when: is_lxc | default(false) | bool
+
   roles:
     - role: tailscale
     - role: adguardhome

@@ -15,7 +15,7 @@
 
 - name: Configure timezone
   community.general.timezone:
-    name: "{{ timezone }}"
+    name: "{{ common_timezone }}"
 
 - name: Enable SSH server
   ansible.builtin.service:
@@ -28,3 +28,4 @@
     name: qemu-guest-agent
     enabled: true
     state: started
+  when: not (is_lxc | default(false))
