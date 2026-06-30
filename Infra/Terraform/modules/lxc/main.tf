@@ -48,6 +48,7 @@ resource "proxmox_virtual_environment_container" "this" {
     }
     user_account {
       password = var.lxc_password
+      keys = [var.ssh_keys]
     }
 
   }
@@ -55,7 +56,29 @@ resource "proxmox_virtual_environment_container" "this" {
     nesting = var.nesting
   }
 
- # lifecycle {
- #   prevent_destroy = true
- # }
+  provisioner "remote-exec" {
+    connection {
+      type     = "ssh"
+      user     = "root"
+      private_key = file("~/.ssh/id_ed25519")
+      password = var.lxc_password
+      host     = split("/", var.ip_address)[0]
+    }
+
+    inline = [
+      "useradd -m -s /bin/bash dev",
+      "usermod -aG sudo dev",
+      "mkdir -p /home/dev/.ssh",
+      "echo '${var.ssh_keys}' >> /home/dev/.ssh/authorized_keys",
+      "chown -R dev:dev /home/dev/.ssh",
+      "chmod 700 /home/dev/.ssh",
+      "chmod 600 /home/dev/.ssh/authorized_keys",
+      "echo 'dev ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/dev",
+    ]
+  }
+
+ lifecycle {
+  ignore_changes = [disk]
+  # prevent_destroy = true
+  }
 }
