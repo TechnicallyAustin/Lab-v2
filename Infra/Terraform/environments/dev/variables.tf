@@ -55,7 +55,7 @@ variable "lxc_password" {
 
 variable "ssh_keys" {
   description = "SSH public keys to add to the LXC user account"
-  type        = string
+  type        = list(string)
   sensitive   = true
 }
 
@@ -90,7 +90,7 @@ variable "infrastructure" {
     template_file_id = string
     os_type          = string
     unprivileged     = bool
-    ssh_keys         = [string]
+    ssh_keys         = list(string)
     nesting          = bool
     started          = bool
     cores            = number

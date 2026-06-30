@@ -38,7 +38,7 @@ module "infrastructure" {
 
   start_on_boot = each.value.start_on_boot
 
-  ssh_keys = [each.value.ssh_keys]
+  ssh_keys = each.value.ssh_keys
 
   cores        = each.value.cores
   memory_mb    = each.value.memory_mb

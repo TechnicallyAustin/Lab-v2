@@ -6,6 +6,7 @@ terraform {
   }
 }
 
+
 resource "proxmox_virtual_environment_container" "this" {
   node_name     = var.node_name
   vm_id         = var.vm_id
@@ -48,7 +49,7 @@ resource "proxmox_virtual_environment_container" "this" {
     }
     user_account {
       password = var.lxc_password
-      keys = [var.ssh_keys]
+      keys = var.ssh_keys
     }
 
   }
@@ -69,7 +70,7 @@ resource "proxmox_virtual_environment_container" "this" {
       "useradd -m -s /bin/bash dev",
       "usermod -aG sudo dev",
       "mkdir -p /home/dev/.ssh",
-      "echo '${var.ssh_keys}' >> /home/dev/.ssh/authorized_keys",
+      "echo '${join("\n", var.ssh_keys)}' >> /home/dev/.ssh/authorized_keys",
       "chown -R dev:dev /home/dev/.ssh",
       "chmod 700 /home/dev/.ssh",
       "chmod 600 /home/dev/.ssh/authorized_keys",

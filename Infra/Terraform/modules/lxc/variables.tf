@@ -48,7 +48,7 @@ variable "unprivileged" {
 
 variable "ssh_keys" {
   description = "SSH public keys to add to the LXC user account"
-  type        = string
+  type        = list(string)
   sensitive   = true
 }
 
@@ -131,12 +131,6 @@ variable "gateway" {
 
 variable "lxc_password" {
   description = "Password for the LXC user"
-  type        = string
-  sensitive   = true
-}
-
-variable "ssh_keys" {
-  description = "SSH public keys to add to the LXC user account"
   type        = string
   sensitive   = true
 }
