@@ -17,6 +17,13 @@
   community.general.timezone:
     name: "{{ common_timezone }}"
 
+- name: Disable networkd-wait-online (causes slow boot)
+  ansible.builtin.systemd:
+    name: systemd-networkd-wait-online
+    enabled: false
+    masked: true
+  become: true
+
 - name: Enable SSH server
   ansible.builtin.service:
     name: ssh
