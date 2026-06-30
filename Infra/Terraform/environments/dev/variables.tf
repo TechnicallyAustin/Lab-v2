@@ -53,12 +53,6 @@ variable "lxc_password" {
   sensitive   = true
 }
 
-variable "ssh_keys" {
-  description = "SSH public keys to add to the LXC user account"
-  type        = list(string)
-  sensitive   = true
-}
-
 variable "platform" {
   type = map(object({
     role         = string
