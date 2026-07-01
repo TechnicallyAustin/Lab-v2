@@ -2,7 +2,7 @@
 adguardhome_version: 0.107.77
 adguardhome_user: adguardhome
 adguardhome_group: adguardhome
-adguardhome_daemon: adguardhome
+adguardhome_daemon: AdGuardHome.service
 adguardhome_home_dir: /var/lib/adguardhome
 adguardhome_data_dir: "{{ adguardhome_home_dir }}"
 adguardhome_bin_dir: /usr/local/bin

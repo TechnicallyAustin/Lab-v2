@@ -4,6 +4,7 @@
     name: "{{ adguardhome_group }}"
     state: present
     system: true
+  become: true
 
 - name: Ensure adguardhome user exists.
   ansible.builtin.user:
@@ -12,6 +13,7 @@
     home: "{{ adguardhome_home_dir }}"
     shell: /usr/sbin/nologin
     system: true
+  become: true
 
 - name: Check if AdGuardHome is already installed.
   ansible.builtin.command:
@@ -19,6 +21,7 @@
   register: __adguardhome_version_result
   ignore_errors: true
   changed_when: false
+
 
 - name: Install AdGuardHome.
   ansible.builtin.unarchive:
@@ -30,6 +33,7 @@
     extra_opts:
       - --strip-components=2
     mode: 0755
+  become: true
   when: __adguardhome_version_result is failed
         or __adguardhome_version_result.stdout is not search(adguardhome_version)
   notify: restart adguardhome
@@ -41,6 +45,7 @@
     group: "{{ adguardhome_group }}"
     state: directory
     mode: 0700
+  become: true
 
 - name: Ensure AdGuardHome config directory exists.
   ansible.builtin.file:
@@ -49,3 +54,4 @@
     group: "{{ adguardhome_group }}"
     state: directory
     mode: 0755
+  become: true

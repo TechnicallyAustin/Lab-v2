@@ -1,6 +1,7 @@
 ---
 - name: Core Networking Infrastructure
   hosts: network
+  become: true
   pre_tasks:
     - name: Create tailscaled override directory
       ansible.builtin.file:
@@ -34,6 +35,25 @@
         daemon_reload: true
       become: true
       when: is_lxc | default(false) | bool
+
+    - name: Check if AdGuardHome systemd unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/AdGuardHome.service
+      register: __adguardhome_unit_check
+
+    - name: Bootstrap AdGuardHome as a systemd service (first run only)
+      ansible.builtin.command:
+        cmd: >
+          {{ adguardhome_bin_dir | default('/usr/local/bin') }}/AdGuardHome -s install
+          -c {{ adguardhome_config_dir | default('/etc/adguardhome') }}/AdGuardHome.yaml
+          -w {{ adguardhome_home_dir | default('/var/lib/adguardhome') }}
+      when: not __adguardhome_unit_check.stat.exists
+      register: __adguardhome_bootstrap
+
+    - name: Show registered service name
+      ansible.builtin.debug:
+        msg: "{{ __adguardhome_bootstrap.stdout_lines | default(['unit already existed']) }}"
+
 
   roles:
     - role: tailscale

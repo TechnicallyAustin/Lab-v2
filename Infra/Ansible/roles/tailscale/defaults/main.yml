@@ -3,7 +3,7 @@
 
 # Whether to install or uninstall Tailscale. Either 'latest', 'present', or 'absent'
 state: latest
-# Required Node auth key to authenticate to Tailscale
+# Required Node auth key to authenticate to Tailscale. Override this in inventory/group vars.
 tailscale_authkey: ""
 
 # Optional command-line arguments for 'tailscale up'
