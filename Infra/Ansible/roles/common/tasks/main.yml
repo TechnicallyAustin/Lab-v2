@@ -35,3 +35,10 @@
     enabled: true
     state: started
   when: not (is_lxc | default(false))
+
+- name: Install Python Pip 3
+  ansible.builtin.pip:
+    name: pip
+    state: present
+    update_cache: true
+  become: true

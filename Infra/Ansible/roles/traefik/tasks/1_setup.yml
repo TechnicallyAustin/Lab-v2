@@ -19,7 +19,7 @@
     mode: "0550"
     content: "{{ traefik_static_config | to_nice_yaml }}"
   notify:
-    - restart traefik container
+    - Restart traefik container
 
 - name: setup | Create traefik network
   become: true

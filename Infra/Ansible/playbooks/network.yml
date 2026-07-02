@@ -55,6 +55,7 @@
         msg: "{{ __adguardhome_bootstrap.stdout_lines | default(['unit already existed']) }}"
 
   roles:
+    - role: docker
     - role: tailscale
     - role: adguardhome
     - role: traefik

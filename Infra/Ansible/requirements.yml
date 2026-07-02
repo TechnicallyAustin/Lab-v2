@@ -72,7 +72,11 @@ roles:
   #           Platform        #
   #---------------------------#
 
-  # Compute - Kubernetes (k3's)
+  # Compute - Kubernetes (k3's + Docker)
+  - name: docker
+    src: geerlingguy.docker
+    version: "3.0.0"
+
   - name: k3s
     src: xanmanning.k3s
     version: "v3.4.0"

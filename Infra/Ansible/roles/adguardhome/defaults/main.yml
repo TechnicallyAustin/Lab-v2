@@ -13,7 +13,7 @@ adguardhome_config_file: "{{ adguardhome_config_dir }}/AdGuardHome.yaml"
 adguardhome_manage_config: true
 
 adguardhome_webhost: "127.0.0.1"
-adguardhome_webport: "80"
+adguardhome_webport: "90"
 adguardhome_users: []
 adguardhome_auth_attempts: 5
 adguardhome_block_auth_min: 15
