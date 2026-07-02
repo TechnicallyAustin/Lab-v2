@@ -1,7 +1,7 @@
 ---
 - name: CentOS | Remove Tailscale
   become: true
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: "{{ tailscale_package }}"
     state: absent
 

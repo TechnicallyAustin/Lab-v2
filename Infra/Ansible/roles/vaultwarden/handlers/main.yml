@@ -1,12 +1,12 @@
 # code: language=ansible
 # vim: set filetype=yaml.ansible :
 ---
-- name: "vw : docker compose up"
+- name: "Vw : docker compose up"
   community.docker.docker_compose_v2:
     state: present
     project_src: "{{ vaultwarden_docker_root_folder }}"
 
-- name: "vw : docker compose restart"
+- name: "Vw : docker compose restart"
   community.docker.docker_compose_v2:
     project_src: "{{ vaultwarden_docker_root_folder }}"
     state: restarted

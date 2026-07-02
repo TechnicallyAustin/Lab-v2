@@ -14,7 +14,7 @@
       ansible.builtin.file:
         path: "/opt/k3s/{{ item }}"
         state: directory
-        mode: 0755
+        mode: "0755"
       loop:
         - bin
         - etc
@@ -23,4 +23,4 @@
       ansible.builtin.file:
         path: "/var/lib/k3s-io"
         state: directory
-        mode: 0755
+        mode: "0755"

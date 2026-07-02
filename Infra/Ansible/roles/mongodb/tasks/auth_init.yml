@@ -5,7 +5,7 @@
           -p {{ mongodb_user_admin_password }} --host {{ mongodb_net_bindip }} --port {{ mongodb_net_port }} --eval 'db.version()' admin
   register: mongodb_user_admin_check
   changed_when: false
-  check_mode: no
+  check_mode: false
   ignore_errors: true
   no_log: "{{ disable_logging_for_auth }}"
 
@@ -41,7 +41,7 @@
         dest: /etc/mongod.conf
         owner: root
         group: root
-        mode: 0644
+        mode: "0644"
       notify:
         - Restart MongoDB
         - Wait for MongoDB on localhost
@@ -122,7 +122,7 @@
     dest: /etc/mongod.conf
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
   notify:
     - Restart MongoDB
     - Wait for MongoDB

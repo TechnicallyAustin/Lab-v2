@@ -1,8 +1,8 @@
 ---
 qdrant_image: "qdrant/qdrant"
-qdrant_version: "latest"             # pin once you settle on a version
-qdrant_http_port: 6333               # REST API + Web UI
-qdrant_grpc_port: 6334               # gRPC — used by LangGraph/LiteLLM clients
-qdrant_data_dir: /opt/qdrant/data    # persistent storage on the host
+qdrant_version: "latest" # pin once you settle on a version
+qdrant_http_port: 6333 # REST API + Web UI
+qdrant_grpc_port: 6334 # gRPC — used by LangGraph/LiteLLM clients
+qdrant_data_dir: /opt/qdrant/data # persistent storage on the host
 qdrant_container_name: qdrant
 qdrant_restart_policy: unless-stopped

@@ -17,7 +17,7 @@
       block:
         - name: Set custom up argument
           ansible.builtin.set_fact:
-            tailscale_args: null
+            tailscale_args:
 
         - name: Init tailscale credentials variables
           ansible.builtin.include_tasks: ../default/init_tailscale_vars.yml

@@ -2,13 +2,13 @@
 # file: clickhouse/handlers/main.yml
 
 - name: Start ClickHouse
-  service:
+  ansible.builtin.service:
     name: clickhouse-server
     state: running
-    enabled: yes
+    enabled: true
     pattern: /usr/bin/clickhouse-server
 
 - name: Restart ClickHouse
-  service:
+  ansible.builtin.service:
     name: clickhouse-server
     state: restarted

@@ -7,10 +7,10 @@
       ansible.builtin.file:
         path: /etc/systemd/system/tailscaled.service.d
         state: directory
-        mode: '0755'
+        mode: "0755"
       become: true
       when: is_lxc | default(false) | bool
-     
+
     - name: Configure tailscaled for LXC userspace networking
       ansible.builtin.copy:
         dest: /etc/systemd/system/tailscaled.service.d/override.conf
@@ -18,7 +18,7 @@
           [Service]
           ExecStart=
           ExecStart=/usr/sbin/tailscaled --tun=userspace-networking --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock
-        mode: '0644'
+        mode: "0644"
       become: true
       when: is_lxc | default(false) | bool
 
@@ -26,7 +26,7 @@
       ansible.builtin.file:
         path: /etc/systemd/system/tailscaled.service.d
         state: directory
-        mode: '0755'
+        mode: "0755"
       become: true
       when: is_lxc | default(false) | bool
 
@@ -53,7 +53,6 @@
     - name: Show registered service name
       ansible.builtin.debug:
         msg: "{{ __adguardhome_bootstrap.stdout_lines | default(['unit already existed']) }}"
-
 
   roles:
     - role: tailscale

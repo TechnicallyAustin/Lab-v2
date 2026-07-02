@@ -33,4 +33,4 @@
 
 - name: Show Container Status - qdrant
   ansible.builtin.debug:
-    msg: "qdrant is running : {{ qdrant_info.container.State.Running}}"
+    msg: "qdrant is running : {{ qdrant_info.container.State.Running }}"

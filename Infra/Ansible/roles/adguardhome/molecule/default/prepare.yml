@@ -7,15 +7,15 @@
     - name: "Get file stats for /etc/shadow"
       ansible.builtin.stat:
         path: "/etc/shadow"
-      register: shadow        
-      when: ansible_facts['distribution'] == "CentOS" 
+      register: shadow
+      when: ansible_facts['distribution'] == "CentOS"
 
     - name: "Fix permissions for /etc/shadow"
       ansible.builtin.file:
         path: "/etc/shadow"
         owner: root
         group: "{{ shadow.stat.gr_name }}"
-        mode: 0640
+        mode: "0640"
       when: ansible_facts['distribution'] == "CentOS" and not shadow.stat.rusr
 
   roles:

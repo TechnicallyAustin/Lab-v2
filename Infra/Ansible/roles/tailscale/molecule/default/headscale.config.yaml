@@ -1,3 +1,4 @@
+---
 # minimal Headscale configuration for local testing
 # See upstream example file for full description of all options:
 # https://github.com/juanfont/headscale/blob/main/config-example.yaml

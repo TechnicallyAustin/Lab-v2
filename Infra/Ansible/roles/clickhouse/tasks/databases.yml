@@ -2,18 +2,18 @@
 # file: clickhouse/tasks/databases.yml
 
 - name: Manage ClickHouse databases
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ clickhouse_host }}:{{ clickhouse_http_port }}/"
     method: POST
     body: |
-      {% if item.state |default('present') == 'absent' %}
+      {% if item.state | default('present') == 'absent' %}
         DROP DATABASE IF EXISTS {{ item.name }}
       {% else %}
         CREATE DATABASE IF NOT EXISTS {{ item.name }}
       {% endif %}
     user: "{{ clickhouse_default_user }}"
     password: "{{ clickhouse_default_password }}"
-    force_basic_auth: yes
+    force_basic_auth: true
   when: clickhouse_databases |length > 0
   with_items:
     - "{{ clickhouse_databases }}"

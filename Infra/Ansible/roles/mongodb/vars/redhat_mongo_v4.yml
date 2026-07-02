@@ -1,3 +1,4 @@
+---
 mongodb_pkg_hold_list:
   - mongodb-org
   - mongodb-org-database-tools-extra

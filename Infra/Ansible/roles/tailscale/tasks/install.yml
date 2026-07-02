@@ -44,7 +44,7 @@
     state: directory
     owner: "{{ ansible_user_uid }}"
     group: "{{ ansible_user_gid }}"
-    mode: '0700'
+    mode: "0700"
   loop:
     - "{{ tailscale_state_folder }}"
     - "{{ tailscale_state_folder }}/artis3n-tailscale"
@@ -55,7 +55,7 @@
     dest: "{{ tailscale_state_folder }}/artis3n-tailscale/README.md"
     owner: "{{ ansible_user_uid }}"
     group: "{{ ansible_user_gid }}"
-    mode: '0644'
+    mode: "0644"
 
 - name: Install | Enable Service
   become: true
@@ -134,7 +134,7 @@
     dest: "{{ tailscale_state_folder }}/artis3n-tailscale/state"
     owner: "{{ ansible_user_uid }}"
     group: "{{ ansible_user_gid }}"
-    mode: '0644'
+    mode: "0644"
   register: state_file
 
 - name: Install | Bring Tailscale Up
@@ -153,7 +153,7 @@
   async: "{{ (tailscale_up_timeout | trim | int) + 10 }}"
   poll: 5
 
-- name: Install | Report non-sensitive stdout from "tailscale up"  # noqa: no-handler
+- name: Install | Report non-sensitive stdout from "tailscale up" # noqa: no-handler
   ansible.builtin.debug:
     msg: "{{ tailscale_start.stdout | replace(tailscale_authkey, 'REDACTED') | regex_replace('\\t', '') | split('\n') }}"
   when:
@@ -173,7 +173,7 @@
   when:
     - tailscale_start is failed
 
-- name: Install | Report redacted failure from "tailscale up"  # noqa: no-handler
+- name: Install | Report redacted failure from "tailscale up" # noqa: no-handler
   ansible.builtin.fail:
     msg: "{{ tailscale_start.stderr | default () | regex_replace(tailscale_authkey, 'REDACTED') | regex_replace('\\t', '') | split('\n') }}"
   when:

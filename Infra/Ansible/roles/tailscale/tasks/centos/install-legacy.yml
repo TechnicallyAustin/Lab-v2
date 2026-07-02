@@ -1,7 +1,7 @@
 ---
 - name: CentOS | Yum Dependencies
   become: true
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: "{{ tailscale_yum_dependencies }}"
     state: present
 
@@ -14,7 +14,7 @@
 
 - name: CentOS | Install Tailscale
   become: true
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: "{{ tailscale_package }}"
-    update_cache: '{{ add_tailscale_repo.changed | default(false) | bool }}'
-    state: '{{ state }}'
+    update_cache: "{{ add_tailscale_repo.changed | default(false) | bool }}"
+    state: "{{ state }}"

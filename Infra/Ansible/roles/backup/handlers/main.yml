@@ -1,4 +1,5 @@
-- name: reload cron
+---
+- name: Reload cron
   ansible.builtin.service:
     name: cron
     state: restarted

@@ -1,12 +1,12 @@
 # code: language=ansible
 # vim: set filetype=yaml.ansible :
 ---
-vaultwarden_docker_version: '1.36.0'
+vaultwarden_docker_version: "1.36.0"
 vaultwarden_docker_container_name: vaultwarden
 vaultwarden_docker_root_folder: "/opt/{{ vaultwarden_docker_container_name }}"
 vaultwarden_docker_root_folder_owner: root
 vaultwarden_docker_root_folder_group: root
-vaultwarden_docker_root_folder_mode: '0750'
+vaultwarden_docker_root_folder_mode: "0750"
 vaultwarden_docker_compose_service_params:
   restart: unless-stopped
 vaultwarden_docker_compose_environment_params:

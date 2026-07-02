@@ -1,3 +1,4 @@
+---
 mongodb_pkg_hold_list:
   - mongodb-database-tools
   - mongodb-mongosh

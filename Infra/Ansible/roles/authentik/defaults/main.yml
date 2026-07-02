@@ -1,7 +1,7 @@
 ---
-##############################
+# #############################
 # Common data
-##############################
+# #############################
 install_app_name: "authentik" # noqa: var-naming[no-role-prefix]
 install_dir: "/var/lib/container-apps/{{ install_app_name }}" # noqa: var-naming[no-role-prefix]
 
@@ -67,10 +67,9 @@ authentik_external_networks:
 # Volumes
 authentik_volume_prefix: "{{ install_app_name }}"
 authentik_volume_labels: []
-
-##############################
+# #############################
 # PostgreSQL settings
-##############################
+# #############################
 authentik_postgres_db: "authentik"
 authentik_postgres_user: ""
 authentik_postgres_password: ""

@@ -24,7 +24,7 @@ platforms:
   - name: instance-2
     groups:
       - instances
-    image: 'ghcr.io/artis3n/docker-amazonlinux2023-ansible:latest'
+    image: "ghcr.io/artis3n/docker-amazonlinux2023-ansible:latest"
     command: ${MOLECULE_COMMAND:-/usr/sbin/init}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
@@ -39,7 +39,7 @@ platforms:
   - name: instance-3
     groups:
       - instances
-    image: 'cisagov/docker-debian12-ansible:latest'
+    image: "cisagov/docker-debian12-ansible:latest"
     command: ${MOLECULE_COMMAND:-/usr/sbin/init}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw

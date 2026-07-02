@@ -1,7 +1,7 @@
 ---
 chromadb_image: "chromadb/chroma"
-chromadb_version: "latest"           # pin this once you settle on a version
-chromadb_port: 8000                  # host port → container port 8000
-chromadb_data_dir: /opt/chromadb/data  # persistent data on the host
+chromadb_version: "latest" # pin this once you settle on a version
+chromadb_port: 8000 # host port → container port 8000
+chromadb_data_dir: /opt/chromadb/data # persistent data on the host
 chromadb_container_name: chromadb
 chromadb_restart_policy: unless-stopped

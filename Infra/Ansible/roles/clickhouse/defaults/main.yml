@@ -5,20 +5,20 @@ clickhouse_apt_key_id: E0C56BD4
 clickhouse_apt_key_url: http://repo.yandex.ru/clickhouse/CLICKHOUSE-KEY.GPG
 clickhouse_apt_repository: "deb http://repo.yandex.ru/clickhouse/deb/stable main/"
 clickhouse_apt_packages:
-  - { pkg: "clickhouse-client",        state: "present" }
+  - { pkg: "clickhouse-client", state: "present" }
   - { pkg: "clickhouse-server-common", state: "present" }
-  - { pkg: "clickhouse-server-base",   state: "present" }
-  - { pkg: "clickhouse-common-dbg",    state: "absent"  }
-  - { pkg: "clickhouse-compressor",    state: "absent"  }
+  - { pkg: "clickhouse-server-base", state: "present" }
+  - { pkg: "clickhouse-common-dbg", state: "absent" }
+  - { pkg: "clickhouse-compressor", state: "absent" }
 
-clickhouse_system_user:  clickhouse
+clickhouse_system_user: clickhouse
 clickhouse_system_group: clickhouse
 
 clickhouse_directories:
   - { path: "{{ clickhouse_server_config_path }}", owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0755" }
-  - { path: "{{ clickhouse_path }}",               owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0700" }
-  - { path: "{{ clickhouse_tmp_path }}",           owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0777" }
-  - { path: "{{ clickhouse_log_path }}",           owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0775" }
+  - { path: "{{ clickhouse_path }}", owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0700" }
+  - { path: "{{ clickhouse_tmp_path }}", owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0777" }
+  - { path: "{{ clickhouse_log_path }}", owner: "{{ clickhouse_system_user }}", group: "{{ clickhouse_system_group }}", mode: "0775" }
 
 clickhouse_host: localhost
 clickhouse_default_user: default
@@ -80,7 +80,7 @@ clickhouse_logger:
 clickhouse_http_port: 8123
 clickhouse_tcp_port: 9000
 
-clickhouse_openssl: [] #TODO
+clickhouse_openssl: [] # TODO
 
 clickhouse_http_server_default_response: "" # <![CDATA[<html ng-app="SMI2"><head><base href="http://ui.tabix.io/"></head><body><div ui-view="" class="content-ui"></div><script src="http://loader.tabix.io/master.js"></script></body></html>]]>
 
@@ -120,12 +120,12 @@ clickhouse_umask: "027"
 clickhouse_max_session_timeout: 3600
 
 clickhouse_default_session_timeout: 60
-    
+
 clickhouse_graphite: []
 #  - { host: localhost, port: 42000, timeout: 0.1, interval: 60, root_path: one_min, metrics: true, events: true, asynchronous_metrics: true  }
 #  - { host: localhost, port: 42000, timeout: 0.1, interval: 1,  root_path: one_sec, metrics: true, events: true, asynchronous_metrics: false }
 
-clickhouse_query_log: #[]
+clickhouse_query_log: # []
   database: system
   table: query_log
   flush_interval_milliseconds: 7500
@@ -137,11 +137,11 @@ clickhouse_part_log: []
 
 clickhouse_internal_dictionaries:
   reload_interval: 3600
-  path_to_regions_hierarchy_file: /opt/geo/regions_hierarchy.txt #TODO: copy file via Ansible
-  path_to_regions_names_files: /opt/geo/ #TODO: create dir via Ansible
+  path_to_regions_hierarchy_file: /opt/geo/regions_hierarchy.txt # TODO: copy file via Ansible
+  path_to_regions_names_files: /opt/geo/ # TODO: create dir via Ansible
 
 clickhouse_external_dictionaries:
-  config: "*_dictionary.xml" #TODO: copy files via Ansible
+  config: "*_dictionary.xml" # TODO: copy files via Ansible
   lazy_load: true
 
 clickhouse_compression: []

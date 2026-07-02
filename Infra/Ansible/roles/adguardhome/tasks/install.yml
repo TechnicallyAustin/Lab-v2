@@ -22,7 +22,6 @@
   ignore_errors: true
   changed_when: false
 
-
 - name: Install AdGuardHome.
   ansible.builtin.unarchive:
     src: "{{ adguardhome_download_uri | default(__adguardhome_download_url) }}"
@@ -32,10 +31,9 @@
       - ./AdGuardHome/AdGuardHome
     extra_opts:
       - --strip-components=2
-    mode: 0755
+    mode: "0755"
   become: true
-  when: __adguardhome_version_result is failed
-        or __adguardhome_version_result.stdout is not search(adguardhome_version)
+  when: __adguardhome_version_result is failed or __adguardhome_version_result.stdout is not search(adguardhome_version)
   notify: restart adguardhome
 
 - name: Ensure AdGuardHome data directory exists.
@@ -44,7 +42,7 @@
     owner: "{{ adguardhome_user }}"
     group: "{{ adguardhome_group }}"
     state: directory
-    mode: 0700
+    mode: "0700"
   become: true
 
 - name: Ensure AdGuardHome config directory exists.
@@ -53,5 +51,5 @@
     owner: "{{ adguardhome_user }}"
     group: "{{ adguardhome_group }}"
     state: directory
-    mode: 0755
+    mode: "0755"
   become: true

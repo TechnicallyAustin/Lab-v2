@@ -15,8 +15,8 @@
 
 - name: Use headscale service
   vars:
-    combined_args: "{{ tailscale_args|default('') }} --login-server=http://headscale:8080"
+    combined_args: "{{ tailscale_args | default('') }} --login-server=http://headscale:8080"
   ansible.builtin.set_fact:
-    tailscale_authkey: "{{ (preauth_list.stdout|from_json)[0].key }}"
+    tailscale_authkey: "{{ (preauth_list.stdout | from_json)[0].key }}"
     tailscale_args: "{{ combined_args }}"
   when: lookup('ansible.builtin.env', 'USE_HEADSCALE', default=false)

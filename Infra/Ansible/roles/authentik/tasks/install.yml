@@ -94,7 +94,7 @@
   ansible.builtin.template:
     src: docker-compose.yml.j2
     dest: "{{ install_dir }}/docker-compose.yml"
-    mode: '0644'
+    mode: "0644"
     owner: root
     group: root
   no_log: true
@@ -129,7 +129,8 @@
 
 - name: Check server readiness
   ansible.builtin.uri:
-    url: "http://{{ authentik_server_container_info.container.NetworkSettings.Networks[(authentik_managed_networks | first).name].IPAddress }}:{{ authentik_http_port }}{{ item }}" # noqa:yaml[line-length]
+    url: "http://{{ authentik_server_container_info.container.NetworkSettings.Networks[(authentik_managed_networks | first).name].IPAddress }}:{{ authentik_http_port
+      }}{{ item }}" # noqa:yaml[line-length]
     method: GET
     status_code: 200
   retries: 10
@@ -140,7 +141,8 @@
 
 - name: Check worker readiness
   ansible.builtin.uri:
-    url: "http://{{ authentik_server_container_info.container.NetworkSettings.Networks[(authentik_managed_networks | first).name].IPAddress }}:{{ authentik_http_port }}{{ item }}" # noqa:yaml[line-length]
+    url: "http://{{ authentik_server_container_info.container.NetworkSettings.Networks[(authentik_managed_networks | first).name].IPAddress }}:{{ authentik_http_port
+      }}{{ item }}" # noqa:yaml[line-length]
     method: GET
     status_code: 200
   retries: 10

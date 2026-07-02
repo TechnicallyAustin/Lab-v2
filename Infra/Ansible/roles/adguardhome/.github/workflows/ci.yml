@@ -1,6 +1,6 @@
 ---
 name: ci
-'on':
+"on":
   pull_request:
   push:
     branches:
@@ -58,8 +58,8 @@ jobs:
         env:
           PLATFORM_NAME: ${{ matrix.platform.name }}
           PLATFORM_IMAGE: ${{ matrix.platform.image }}
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"
 
   check:
     name: Molecule Tests

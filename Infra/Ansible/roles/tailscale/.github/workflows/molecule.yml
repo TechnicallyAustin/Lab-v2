@@ -10,7 +10,7 @@ on:
       image:
         required: false
         type: string
-        default: 'geerlingguy/docker-ubuntu2404-ansible:latest'
+        default: "geerlingguy/docker-ubuntu2404-ansible:latest"
       command:
         required: false
         type: string
@@ -24,8 +24,8 @@ on:
 
 env:
   # https://www.jeffgeerling.com/blog/2020/getting-colorized-output-molecule-and-ansible-on-github-actions-ci
-  PY_COLORS: '1'
-  ANSIBLE_FORCE_COLOR: '1'
+  PY_COLORS: "1"
+  ANSIBLE_FORCE_COLOR: "1"
 
 jobs:
   run-scenario:
@@ -46,7 +46,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: pyproject.toml
-          cache: 'poetry'
+          cache: "poetry"
 
       - name: Install packages
         run: poetry install --no-interaction --no-root

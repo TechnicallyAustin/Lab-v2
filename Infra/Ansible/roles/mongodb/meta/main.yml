@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: mongodb_install
   namespace: trfore
@@ -17,5 +18,4 @@ galaxy_info:
       versions: [focal, jammy, noble]
 
   galaxy_tags: [database, mongo, mongodb]
-
 dependencies: []

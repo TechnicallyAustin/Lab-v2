@@ -1,5 +1,4 @@
 ---
-
 - name: "Ensure cluster token is captured from {{ k3s_control_delegate }}"
   ansible.builtin.slurp:
     path: "{{ k3s_runtime_config['data-dir'] | default(k3s_data_dir) }}/server/token"
@@ -28,14 +27,14 @@
   ansible.builtin.file:
     path: "{{ k3s_token_location | dirname }}"
     state: directory
-    mode: 0755
+    mode: "0755"
   become: "{{ k3s_become }}"
 
 - name: Ensure k3s cluster token file is present
   ansible.builtin.template:
     src: cluster-token.j2
     dest: "{{ k3s_token_location }}"
-    mode: 0600
+    mode: "0600"
   become: "{{ k3s_become }}"
   notify:
     - "Restart k3s {{ k3s_service_handler[ansible_service_mgr] }}"
@@ -44,7 +43,7 @@
   ansible.builtin.template:
     src: k3s.service.j2
     dest: "{{ k3s_systemd_unit_dir }}/k3s.service"
-    mode: 0644
+    mode: "0644"
   become: "{{ k3s_become }}"
   when:
     - k3s_service_handler[ansible_service_mgr] == 'systemd'
@@ -56,7 +55,7 @@
   ansible.builtin.template:
     src: k3s.openrc.j2
     dest: "{{ k3s_openrc_service_dir }}/k3s"
-    mode: 0744
+    mode: "0744"
   when:
     - k3s_service_handler[ansible_service_mgr] == 'service'
   notify:
@@ -68,7 +67,7 @@
   ansible.builtin.template:
     src: k3s.logrotate.j2
     dest: "{{ k3s_logrotate_dir }}/k3s"
-    mode: 0640
+    mode: "0640"
   when:
     - k3s_service_handler[ansible_service_mgr] == 'service'
   notify:
@@ -80,19 +79,19 @@
   ansible.builtin.template:
     src: config.yaml.j2
     dest: "{{ k3s_config_file }}"
-    mode: 0644
+    mode: "0644"
   notify:
     - "Reload {{ k3s_service_handler[ansible_service_mgr] }}"
     - "Restart k3s {{ k3s_service_handler[ansible_service_mgr] }}"
   become: "{{ k3s_become }}"
 
 - name: Ensure secondary controllers are started
-  include_tasks: ensure_control_plane_started_{{ ansible_service_mgr }}.yml
+  ansible.builtin.include_tasks: ensure_control_plane_started_{{ ansible_service_mgr }}.yml
   when:
     - k3s_control_node
     - not k3s_primary_control_node
 
-- import_tasks: post_checks_control_plane.yml
+- ansible.builtin.import_tasks: post_checks_control_plane.yml
   when:
     - not k3s_skip_validation
     - not k3s_skip_post_checks
@@ -100,7 +99,7 @@
 - name: Flush Handlers
   ansible.builtin.meta: flush_handlers
 
-- import_tasks: post_checks_nodes.yml
+- ansible.builtin.import_tasks: post_checks_nodes.yml
   when:
     - not k3s_skip_validation
     - not k3s_skip_post_checks

@@ -41,9 +41,11 @@ tailscale_debian_distro:
 
 tailscale_apt_keyring_path: /usr/share/keyrings/tailscale-archive-keyring.gpg
 
-tailscale_apt_deb: deb [signed-by={{ tailscale_apt_keyring_path }}] https://pkgs.tailscale.com/{{ release_stability | lower }}/{{ tailscale_debian_distro[ansible_distribution | lower] }} {{ apt_codename | lower }} main
+tailscale_apt_deb: deb [signed-by={{ tailscale_apt_keyring_path }}] https://pkgs.tailscale.com/{{ release_stability | lower }}/{{
+  tailscale_debian_distro[ansible_distribution | lower] }} {{ apt_codename | lower }} main
 
-tailscale_apt_signkey: https://pkgs.tailscale.com/{{ release_stability | lower }}/{{ tailscale_debian_distro[ansible_distribution | lower] }}/{{ apt_codename | lower }}.noarmor.gpg
+tailscale_apt_signkey: https://pkgs.tailscale.com/{{ release_stability | lower }}/{{ tailscale_debian_distro[ansible_distribution | lower] }}/{{ apt_codename |
+  lower }}.noarmor.gpg
 
 tailscale_yum_dependencies:
   - yum-utils
@@ -52,7 +54,8 @@ tailscale_yum_dependencies:
 tailscale_yum_repos:
   Amazon: https://pkgs.tailscale.com/{{ release_stability | lower }}/amazon-linux/{{ ansible_distribution_major_version }}/tailscale.repo
   CentOS: https://pkgs.tailscale.com/{{ release_stability | lower }}/centos/{{ ansible_distribution_major_version }}/tailscale.repo
-  RedHat: https://pkgs.tailscale.com/{{ release_stability | lower }}/{{ "rhel" if ansible_distribution_major_version | int == 8 else "centos" }}/{{ ansible_distribution_major_version }}/tailscale.repo
+  RedHat: https://pkgs.tailscale.com/{{ release_stability | lower }}/{{ "rhel" if ansible_distribution_major_version | int == 8 else "centos" }}/{{
+    ansible_distribution_major_version }}/tailscale.repo
   OracleLinux: https://pkgs.tailscale.com/{{ release_stability | lower }}/centos/{{ ansible_distribution_major_version }}/tailscale.repo
   Rocky: https://pkgs.tailscale.com/{{ release_stability | lower }}/centos/{{ ansible_distribution_major_version }}/tailscale.repo
   AlmaLinux: https://pkgs.tailscale.com/{{ release_stability | lower }}/centos/{{ ansible_distribution_major_version }}/tailscale.repo

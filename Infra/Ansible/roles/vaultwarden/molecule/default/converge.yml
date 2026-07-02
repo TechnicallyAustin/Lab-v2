@@ -4,22 +4,22 @@
 - name: Converge
   hosts: all
   tasks:
-    - name: update apt cache
+    - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
 
-    - name: install docker
+    - name: Install docker
       ansible.builtin.apt:
         name:
           - docker.io
           - docker-compose
           - docker-cli
 
-    - name: start docker
+    - name: Start docker
       ansible.builtin.systemd:
         name: docker
         state: started
 
-    - name: "include lego role"
+    - name: "Include lego role"
       ansible.builtin.include_role:
         name: "{{ lookup('env', 'GITHUB_WORKSPACE') }}"

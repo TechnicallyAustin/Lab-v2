@@ -6,7 +6,7 @@
     dest: "{{ adguardhome_config_file }}"
     owner: "{{ adguardhome_user }}"
     group: "{{ adguardhome_group }}"
-    mode: 0600
+    mode: "0600"
   check_mode: true
   register: __config_file_changes
 
@@ -15,7 +15,7 @@
   ansible.builtin.service:
     name: "{{ adguardhome_daemon }}"
     state: stopped
-  when: __config_file_changes is changed  # noqa: no-handler
+  when: __config_file_changes is changed # noqa: no-handler
 
 # Apply changes only if there are changes
 - name: Copy config file.
@@ -24,7 +24,7 @@
     dest: "{{ adguardhome_config_file }}"
     owner: "{{ adguardhome_user }}"
     group: "{{ adguardhome_group }}"
-    mode: 0600
+    mode: "0600"
     backup: true
-  when: __config_file_changes is changed  # noqa: no-handler
+  when: __config_file_changes is changed # noqa: no-handler
   notify: restart adguardhome

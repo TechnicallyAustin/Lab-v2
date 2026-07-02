@@ -12,8 +12,8 @@ on:
 
 env:
   # https://www.jeffgeerling.com/blog/2020/getting-colorized-output-molecule-and-ansible-on-github-actions-ci
-  PY_COLORS: '1'
-  ANSIBLE_FORCE_COLOR: '1'
+  PY_COLORS: "1"
+  ANSIBLE_FORCE_COLOR: "1"
 
 jobs:
   molecule:
@@ -23,23 +23,23 @@ jobs:
       matrix:
         include:
           - image: ghcr.io/artis3n/docker-amazonlinux2023-ansible:latest
-#          - image: geerlingguy/docker-rockylinux8-ansible:latest
+          #          - image: geerlingguy/docker-rockylinux8-ansible:latest
           # Temporary: until https://github.com/rocky-linux/sig-cloud-instance-images/issues/56 is resolved
-#          - image: geerlingguy/docker-rockylinux9-ansible:latest
-#          - image: ghcr.io/artis3n/docker-almalinux8-ansible:latest
-#          - image: ghcr.io/artis3n/docker-rhel8-ansible:latest
-#          - image: ghcr.io/artis3n/docker-oraclelinux8-ansible:latest
+          #          - image: geerlingguy/docker-rockylinux9-ansible:latest
+          #          - image: ghcr.io/artis3n/docker-almalinux8-ansible:latest
+          #          - image: ghcr.io/artis3n/docker-rhel8-ansible:latest
+          #          - image: ghcr.io/artis3n/docker-oraclelinux8-ansible:latest
           - image: geerlingguy/docker-ubuntu2404-ansible:latest
           - image: ghcr.io/fkonradmain/docker-linuxmint22-ansible:latest
           - image: geerlingguy/docker-ubuntu2204-ansible:latest
-#          - image: geerlingguy/docker-ubuntu2004-ansible:latest
-#          - image: geerlingguy/docker-ubuntu1804-ansible:latest
-#            command: /lib/systemd/systemd
+          #          - image: geerlingguy/docker-ubuntu2004-ansible:latest
+          #          - image: geerlingguy/docker-ubuntu1804-ansible:latest
+          #            command: /lib/systemd/systemd
           - image: geerlingguy/docker-debian12-ansible:latest
           - image: geerlingguy/docker-debian11-ansible:latest
             command: /lib/systemd/systemd
-#          - image: geerlingguy/docker-debian10-ansible:latest
-#            command: /lib/systemd/systemd
+          #          - image: geerlingguy/docker-debian10-ansible:latest
+          #            command: /lib/systemd/systemd
           - image: geerlingguy/docker-fedora36-ansible:latest
           - image: ghcr.io/artis3n/docker-arch-ansible:latest
           - image: ghcr.io/artis3n/docker-opensuse-tumbleweed-ansible:latest
@@ -50,11 +50,11 @@ jobs:
     with:
       image: ${{ matrix.image }}
       command: ${{ matrix.command }}
-      scenario: 'default'
+      scenario: "default"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_CI_KEY }}
 
-  # Systems that aren't working with cgroups v2 on ubuntu 22.04, but works on ubuntu 20.04
+# Systems that aren't working with cgroups v2 on ubuntu 22.04, but works on ubuntu 20.04
 #  molecule-legacy:
 #    name: "Test Legacy Distros"
 #    strategy:
@@ -77,7 +77,7 @@ jobs:
     name: "Run Molecule Scenario: state-absent"
     uses: ./.github/workflows/molecule.yml
     with:
-      scenario: 'state-absent'
+      scenario: "state-absent"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_CI_KEY }}
 
@@ -85,7 +85,7 @@ jobs:
     name: "Run Molecule Scenario: skip-authentication"
     uses: ./.github/workflows/molecule.yml
     with:
-      scenario: 'skip-authentication'
+      scenario: "skip-authentication"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_CI_KEY }}
 
@@ -93,7 +93,7 @@ jobs:
     name: "Run Molecule Scenario: args"
     uses: ./.github/workflows/molecule.yml
     with:
-      scenario: 'args'
+      scenario: "args"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_CI_KEY }}
 
@@ -101,7 +101,7 @@ jobs:
     name: "Run Molecule Scenario: state-idempotency"
     uses: ./.github/workflows/molecule.yml
     with:
-      scenario: 'state-idempotency'
+      scenario: "state-idempotency"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_CI_KEY }}
 
@@ -109,7 +109,7 @@ jobs:
     name: "Run Molecule Scenario: oauth"
     uses: ./.github/workflows/molecule.yml
     with:
-      scenario: 'oauth'
+      scenario: "oauth"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
 
@@ -125,7 +125,7 @@ jobs:
     name: "Run Molecule Scenario: strategy-free"
     uses: ./.github/workflows/molecule.yml
     with:
-      scenario: 'strategy-free'
+      scenario: "strategy-free"
     secrets:
       tailscale_key: ${{ secrets.TAILSCALE_CI_KEY }}
 
@@ -155,7 +155,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: pyproject.toml
-          cache: 'poetry'
+          cache: "poetry"
 
       - name: Install packages
         run: poetry install --no-interaction

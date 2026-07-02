@@ -1,8 +1,8 @@
 ---
 roles:
-  #---------------------------#
+  # ---------------------------#
   #       Networking          #
-  #---------------------------#
+  # ---------------------------#
 
   # Networking / VPN - Tailscale
   - name: tailscale
@@ -22,7 +22,6 @@ roles:
   #---------------------------#
   #       Infrastructure      #
   #---------------------------#
-
 
   # Identity - Authentik
   - name: authentik
@@ -68,7 +67,6 @@ roles:
   # MinIO — no strong Galaxy role, built in custom data_tier role
   # Uptime Kuma Watch Dog - no strong Galaxy role, built in custom data_tier role
   # Backup Cron - Write Custom Role
-
 
   #---------------------------#
   #           Platform        #

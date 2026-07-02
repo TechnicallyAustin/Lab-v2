@@ -1,5 +1,4 @@
 ---
-
 - name: Check that k3s_state is a supported value
   ansible.builtin.assert:
     that:
@@ -71,14 +70,12 @@
     - not k3s_skip_validation
     - not k3s_skip_env_checks
 
-- include_tasks: pre_checks_version.yml
+- ansible.builtin.include_tasks: pre_checks_version.yml
   when:
-    - (k3s_release_version is not defined
-        or not k3s_release_version
-        or k3s_release_version is not regex('\\+k3s[1-9]$'))
+    - (k3s_release_version is not defined or not k3s_release_version or k3s_release_version is not regex('\\+k3s[1-9]$'))
     - not k3s_airgap
 
-- include_tasks: pre_checks_cgroups.yml
+- ansible.builtin.include_tasks: pre_checks_cgroups.yml
   loop: "{{ k3s_cgroup_subsys }}"
   loop_control:
     loop_var: cgroup
@@ -86,7 +83,7 @@
     - not k3s_skip_validation
     - not k3s_skip_env_checks
 
-- include_tasks: pre_checks_packages.yml
+- ansible.builtin.include_tasks: pre_checks_packages.yml
   loop: "{{ k3s_check_packages[k3s_os_distribution_version] }}"
   loop_control:
     loop_var: package
@@ -95,28 +92,27 @@
     - not k3s_skip_env_checks
     - k3s_check_packages[k3s_os_distribution_version] is defined
 
-- include_tasks: pre_checks_issue_data.yml
+- ansible.builtin.include_tasks: pre_checks_issue_data.yml
   when:
     - pyratlabs_issue_controller_dump is defined
     - pyratlabs_issue_controller_dump
 
-- import_tasks: pre_checks_variables.yml
+- ansible.builtin.import_tasks: pre_checks_variables.yml
   when:
     - not k3s_skip_validation
 
-- import_tasks: pre_checks_experimental_variables.yml
+- ansible.builtin.import_tasks: pre_checks_experimental_variables.yml
   when:
     - not k3s_skip_validation
 
-- import_tasks: pre_checks_unsupported_rootless.yml
+- ansible.builtin.import_tasks: pre_checks_unsupported_rootless.yml
   when:
     - k3s_runtime_config.rootless is defined
     - k3s_runtime_config.rootless
     - not k3s_skip_validation
 
-- import_tasks: ensure_pre_configuration.yml
-
-- import_tasks: pre_checks_control_node_count.yml
+- ansible.builtin.import_tasks: ensure_pre_configuration.yml
+- ansible.builtin.import_tasks: pre_checks_control_node_count.yml
   when:
     - k3s_build_cluster is defined
     - k3s_build_cluster

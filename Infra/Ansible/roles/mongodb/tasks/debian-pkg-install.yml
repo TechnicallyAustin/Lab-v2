@@ -1,3 +1,4 @@
+---
 - name: Add MongoDB gpg signing key
   ansible.builtin.apt_key:
     url: "{{ mongodb_gpg_key }}"

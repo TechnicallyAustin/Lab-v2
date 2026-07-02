@@ -32,4 +32,4 @@
 
 - name: Show Container Status - ChromaDB
   ansible.builtin.debug:
-    msg: "ChromaDB is running : {{ chroma_info.container.State.Running}}"
+    msg: "ChromaDB is running : {{ chroma_info.container.State.Running }}"

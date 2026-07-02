@@ -2,7 +2,7 @@
 # file: clickhouse/tasks/configuration.yml
 
 - name: Ensure ClickHouse directories
-  file:
+  ansible.builtin.file:
     path: "{{ item.path }}"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
@@ -12,11 +12,11 @@
     - "{{ clickhouse_directories }}"
 
 - name: Manage ClickHouse configuration
-  template: 
+  ansible.builtin.template:
     src: config.xml.j2
     dest: "{{ clickhouse_server_config_path }}/config.xml"
     owner: "{{ clickhouse_system_user }}"
     group: "{{ clickhouse_system_group }}"
-    mode: 0644
+    mode: "0644"
   notify:
     - Restart ClickHouse

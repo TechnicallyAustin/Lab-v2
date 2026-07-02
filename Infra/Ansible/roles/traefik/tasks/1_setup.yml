@@ -1,38 +1,38 @@
 ---
-- name: setup | create traefik directory
+- name: setup | Create traefik directory
   become: true
-  file:
-    path: '{{ item }}'
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
     owner: root
     group: docker
-    mode: 0550
+    mode: "0550"
   with_items:
     - "{{ traefik_host_vol }}"
 
-- name: setup | create traefik configuration
+- name: setup | Create traefik configuration
   become: true
-  copy:
+  ansible.builtin.copy:
     dest: "{{ traefik_host_vol }}traefik.yml"
     owner: root
     group: docker
-    mode: 0550
+    mode: "0550"
     content: "{{ traefik_static_config | to_nice_yaml }}"
   notify:
     - restart traefik container
 
-- name: setup | create traefik network
+- name: setup | Create traefik network
   become: true
-  docker_network:
-    name: '{{ traefik_network_name }}'
+  community.docker.docker_network:
+    name: "{{ traefik_network_name }}"
     ipam_config:
-      - subnet: '{{ traefik_network_ipam_subnet }}'
-        gateway: '{{ traefik_network_ipam_gateway }}'
-        iprange: '{{ traefik_network_ipam_iprange }}'
+      - subnet: "{{ traefik_network_ipam_subnet }}"
+        gateway: "{{ traefik_network_ipam_gateway }}"
+        iprange: "{{ traefik_network_ipam_iprange }}"
 
-- name: setup | start traefik container
+- name: setup | Start traefik container
   become: true
-  docker_container:
+  community.docker.docker_container:
     name: "{{ traefik_container_name }}"
     image: "{{ traefik_image }}"
     restart_policy: unless-stopped
@@ -42,5 +42,5 @@
     command:
       - "--configFile={{ traefik_host_vol }}traefik.yml"
     networks:
-      - name: '{{ traefik_network_name }}'
+      - name: "{{ traefik_network_name }}"
     networks_cli_compatible: true

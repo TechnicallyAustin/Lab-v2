@@ -2,5 +2,5 @@
 - name: Arch | Remove Tailscale
   become: true
   community.general.pacman:
-    name: '{{ tailscale_package }}'
+    name: "{{ tailscale_package }}"
     state: absent

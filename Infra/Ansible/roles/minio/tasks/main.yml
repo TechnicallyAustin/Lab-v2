@@ -39,4 +39,4 @@
 
 - name: Show Container Status - minio
   ansible.builtin.debug:
-    msg: "minio is running : {{ minio_info.container.State.Running}}"
+    msg: "minio is running : {{ minio_info.container.State.Running }}"

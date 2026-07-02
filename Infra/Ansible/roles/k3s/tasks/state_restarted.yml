@@ -1,5 +1,3 @@
 ---
-
-- import_tasks: ensure_stopped.yml
-
-- import_tasks: ensure_started.yml
+- ansible.builtin.import_tasks: ensure_stopped.yml
+- ansible.builtin.import_tasks: ensure_started.yml
