@@ -1,0 +1,53 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: immich
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # Source 1: Immich Helm chart, pulled directly from the chart repo's
+    # git tag rather than the published Helm repo index. The index at
+    # https://immich-app.github.io/immich-charts stopped tracking new
+    # releases somewhere after this version (confirmed live:
+    # `helm search repo` only resolves up to 0.12.0, while
+    # `immich-0.13.1`/`immich-0.13.2` etc. all exist as real GitHub tags
+    # with charts/immich/Chart.yaml present — the index.yaml just never
+    # got regenerated for them). Pinning to the exact tag already running
+    # in-cluster (chart 0.13.1 / app v3.0.0) sidesteps the broken index
+    # entirely and keeps this a no-op migration, not an upgrade.
+    - repoURL: https://github.com/immich-app/immich-charts.git
+      targetRevision: immich-0.13.1
+      path: charts/immich
+
+      helm:
+        valueFiles:
+          - $values/Platform/GitOps/Argo/Apps/immich/values.yml
+
+    # Source 2: this repo's values.yml, referenced by Source 1 above
+    - repoURL: https://github.com/TechnicallyAustin/Lab-v2
+      targetRevision: main
+      ref: values
+
+    # Source 3: the dedicated Postgres (chart doesn't bundle a database —
+    # see HELM-DEPLOYMENT-GUIDE.md, Question 1). Plain manifest directory,
+    # applied as-is, unrelated to the $values ref above.
+    - repoURL: https://github.com/TechnicallyAustin/Lab-v2
+      targetRevision: main
+      path: Platform/GitOps/Argo/Apps/immich/manifests
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: immich
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true

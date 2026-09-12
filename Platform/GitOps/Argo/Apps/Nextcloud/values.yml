@@ -1,0 +1,95 @@
+---
+replicaCount: 1
+
+nextcloud:
+  host: nextcloud.platform.local
+  username: admin
+  # Admin credentials come from a Secret I create by hand
+  # not plaintext here — this repo is public-readable.
+  existingSecret:
+    enabled: true
+    secretName: nextcloud-admin
+    usernameKey: nextcloud-username
+    passwordKey: nextcloud-password
+
+  trustedDomains:
+    - nextcloud.platform.local
+
+  # Primary storage = MinIO on data_01, not local pod disk. The chart
+  # generates the objectstore config.php from these values automatically
+  # (nextcloud.defaultConfigs.s3.config.php is already true by default) —
+  # no hand-written custom.config.php required. See Nextcloud's primary
+  # storage docs (admin_manual/configuration_files/primary_storage.html)
+  # for the underlying config this maps to.
+  objectStore:
+    s3:
+      enabled: true
+      # data_01 — this is MinIO's S3 API port, NOT the :9003 console port
+      host: "192.168.0.213"
+      port: "9002"
+      # LAN-only path from k3s to data_01, no TLS between them
+      ssl: false
+      # required for MinIO (not native AWS S3)
+      usePathStyle: true
+      # arbitrary — MinIO ignores region, but the field is required
+      region: "us-east-1"
+      bucket: "nextcloud"
+      # MinIO will get this bucket created on first boot
+      autoCreate: true
+      existingSecret: "nextcloud-s3-credentials"
+      secretKeys:
+        accessKey: "access-key"
+        secretKey: "secret-key"
+
+  configs: {}
+
+# Nextcloud sits behind Traefik, which terminates TLS at the edge
+# (networking_01) and forwards plain HTTP to k3s — same pattern as ArgoCD's
+# ingress. Without this, Nextcloud doesn't know the external request was
+# HTTPS and can loop/redirect incorrectly.
+phpClientHttpsFix:
+  enabled: true
+  protocol: https
+
+internalDatabase:
+  enabled: false
+
+# Bundled MariaDB subchart — self-contained rather than reusing data_01's
+# shared Postgres, which is still localhost-only pending the Tailscale bind
+# work tracked in CHECKLIST.md. Revisit once that's done if you'd rather
+# consolidate onto the shared Postgres instead.
+mariadb:
+  enabled: true
+  # No auth.password/existingSecret set — the bitnami subchart auto-generates
+  # a random root/user password on first install and stores it in its own
+  # Secret (<release>-mariadb). One less credential you have to fabricate.
+  primary:
+    persistence:
+      enabled: true
+      storageClass: local-path
+      accessMode: ReadWriteOnce
+      size: 8Gi
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  hosts:
+    - host: nextcloud.platform.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  accessMode: ReadWriteOnce
+  size: 20Gi
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
