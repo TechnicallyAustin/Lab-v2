@@ -3,6 +3,12 @@ controllers:
   main:
     containers:
       main:
+        image:
+          # Pinned explicitly so a future chart bump can't silently walk
+          # the app version forward underneath us. Matches the chart tag
+          # in application.yml (immich-0.13.1) — re-verify this pairing
+          # any time that tag changes.
+          tag: v3.0.0
         env:
           # Dedicated Postgres from manifests/postgres.yaml — not the
           # shared data_01 instance. See HELM-DEPLOYMENT-GUIDE.md Q1 for
@@ -15,6 +21,11 @@ controllers:
               secretKeyRef:
                 name: immich-postgres-user
                 key: password
+                # REDIS_HOSTNAME isn't set here — it defaults to
+                # '{{ printf "%s-valkey" .Release.Name }}', which only
+                # resolves correctly because this Application's name (and
+                # therefore the Helm release name) is "immich". Renaming
+                # the Application would silently break this.
 
 immich:
   persistence:

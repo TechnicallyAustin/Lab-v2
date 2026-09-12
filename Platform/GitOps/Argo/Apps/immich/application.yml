@@ -10,10 +10,19 @@ spec:
   project: default
 
   sources:
-    # Source 1: remote Immich Helm chart
-    - repoURL: https://immich-app.github.io/immich-charts
-      chart: immich
-      targetRevision: 0.13.1
+    # Source 1: Immich Helm chart, pulled directly from the chart repo's
+    # git tag rather than the published Helm repo index. The index at
+    # https://immich-app.github.io/immich-charts stopped tracking new
+    # releases somewhere after this version (confirmed live:
+    # `helm search repo` only resolves up to 0.12.0, while
+    # `immich-0.13.1`/`immich-0.13.2` etc. all exist as real GitHub tags
+    # with charts/immich/Chart.yaml present — the index.yaml just never
+    # got regenerated for them). Pinning to the exact tag already running
+    # in-cluster (chart 0.13.1 / app v3.0.0) sidesteps the broken index
+    # entirely and keeps this a no-op migration, not an upgrade.
+    - repoURL: https://github.com/immich-app/immich-charts.git
+      targetRevision: immich-0.13.1
+      path: charts/immich
 
       helm:
         valueFiles:

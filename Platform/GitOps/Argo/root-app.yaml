@@ -1,0 +1,32 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: root-apps
+  namespace: argocd
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/TechnicallyAustin/Lab-v2.git
+    targetRevision: main
+    path: Platform/GitOps/Argo/Apps
+    directory:
+      # true, not the guide's drafted false — Apps/ holds one subfolder
+      # per app (immich/, Nextcloud/, appflowy/), not flat Application
+      # files directly under Apps/. Confirmed live via `git ls-files`.
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
